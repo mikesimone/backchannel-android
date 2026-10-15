@@ -30,9 +30,13 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 
 - **Privacy policy URL**: https://github.com/mikesimone/backchannel-android#privacy
 - **Ads**: No ads.
-- **App access**: All functionality needs an account. Reviewer note: "Sign up
-  with any phone number that can receive an SMS or call, or link to an
-  existing Signal account from Settings > Linked devices in Signal."
+- **App access**: All or some functionality is restricted. Reviewers can't
+  create accounts or contact us, so they get a ready reviewer account:
+  Name `Reviewer account`; Username = the reviewer number (+1...); Password =
+  its Signal PIN; Other info = how to read the SMS code from the code page
+  (URL + password). Box "sign in details give full access": checked (no paid
+  content). Reviewer number, code page and demo chats: to set up (needs a
+  Twilio or other spare SMS number from Mike).
 - **Target audience**: 18 and over (Signal's own terms require 13+, but an
   adult-only target avoids the Families policy).
 - **News app**: No. **Government app**: No. **Financial features**: None.
