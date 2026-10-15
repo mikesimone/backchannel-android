@@ -3,7 +3,7 @@
 The listing lives in `fastlane/metadata/android/en-US/` (title, short and
 full description, icon, feature graphic, changelog). The `Play listing`
 workflow pushes it when those files change; the `Release` workflow's
-`Google Play` job uploads each release's AAB to the internal testing track.
+`Google Play` job uploads each release's AAB to the closed testing track (`alpha`; Mike skipped internal testing).
 Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 
 ## One-time steps in Play Console (Mike)
@@ -17,11 +17,11 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
    add Backchannel with access to Backchannel: releases and store listing.
 3. **Secret**, on Six:
    `gh secret set PLAY_SERVICE_ACCOUNT_JSON -R mikesimone/backchannel-android < ~/.chatshot-toolchain/play-credentials.json`
-4. **First AAB by hand**: Play accepts API uploads only after one upload in
-   the Console. Test and release > Internal testing > Create release, and
-   upload the `.aab` from the latest GitHub release.
-5. **App signing**: at that first upload choose **use my own key** (export
-   and upload with PEPK), never a Google-generated key. The key is the one
+4. **Closed testing** (Mike 2026-10-15: no internal testing): releases go
+   to track `alpha` as drafts. Add testers (email list or Google Group)
+   under Test and release > Testing > Closed testing.
+5. **App signing**: done 2026-10-15 via PEPK; choose **use my own key**
+   (export and upload with PEPK), never a Google-generated key. The key is the one
    in `~/.config/backchannel-android` on Six (SHA-256
    `19:6E:50:45:...:1F:44:62`), so GitHub, F-Droid and Play builds can
    update each other.

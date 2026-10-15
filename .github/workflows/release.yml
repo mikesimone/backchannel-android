@@ -187,7 +187,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
 
-  # BACKCHANNEL: store listing and AAB to Play's internal testing track.
+  # BACKCHANNEL: AAB to Play closed testing (track "alpha"; Mike 2026-10-15: no internal testing).
   # Runs only once the PLAY_SERVICE_ACCOUNT_JSON secret exists. Play takes
   # API uploads only after the first AAB went in by hand in Play Console.
   play:
@@ -220,10 +220,11 @@ jobs:
             --json_key play.json \
             --package_name net.mikesimone.backchannel \
             --aab "$(ls bundle/*/*.aab | head -1)" \
-            --track internal \
+            --track "${PLAY_TRACK:-alpha}" \
             --release_status "${PLAY_RELEASE_STATUS:-draft}" \
             --metadata_path fastlane/metadata/android \
             --skip_upload_screenshots "${{ vars.PLAY_SKIP_SCREENSHOTS || 'false' }}"
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           PLAY_RELEASE_STATUS: ${{ vars.PLAY_RELEASE_STATUS }}
+          PLAY_TRACK: ${{ vars.PLAY_TRACK }}
