@@ -1,6 +1,7 @@
 package net.mikesimone.backchannel
 
 import android.app.Activity
+import org.signal.core.util.ThreadUtil
 import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.conversation.ConversationIntents
@@ -9,7 +10,6 @@ import org.thoughtcrime.securesms.database.DraftTable
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.mms.QuoteId
 import org.thoughtcrime.securesms.recipients.Recipient
-import org.signal.core.util.ThreadUtil
 
 /**
  * Reply privately (Backchannel P5): from someone's message in a group, open

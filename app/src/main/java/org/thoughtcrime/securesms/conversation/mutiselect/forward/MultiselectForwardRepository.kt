@@ -6,6 +6,7 @@ import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.network.util.Preconditions
 import org.thoughtcrime.securesms.contacts.paged.ContactSearchKey
 import org.thoughtcrime.securesms.database.SignalDatabase
+import org.thoughtcrime.securesms.dependencies.AppDependencies
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.sharing.MultiShareArgs
@@ -69,8 +70,17 @@ object MultiselectForwardRepository {
       val results = mappedArgs.sortedBy { it.timestamp }.map { MultiShareSender.sendSync(it) }
 
       if (additionalMessage.isNotEmpty()) {
-        val additional = MultiShareArgs.Builder(filteredContacts.filterNot { it is ContactSearchKey.RecipientSearchKey && it.isStory }.toSet())
+        val additionalContacts = filteredContacts.filterNot { it is ContactSearchKey.RecipientSearchKey && it.isStory }.toSet()
+        val additional = MultiShareArgs.Builder(additionalContacts)
           .withDraftText(additionalMessage)
+          // BACKCHANNEL: "@Name" becomes a mention in groups that person is in
+          .withMentions(
+            net.mikesimone.backchannel.ForwardMentions.find(
+              AppDependencies.application,
+              additionalMessage,
+              additionalContacts.map { (it as ContactSearchKey.RecipientSearchKey).recipientId }
+            )
+          )
           .build()
 
         if (additional.contactSearchKeys.isNotEmpty()) {
