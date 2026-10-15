@@ -46,14 +46,14 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
   Users can interact or exchange content: **Yes**. Shares user location
   with other users: **Yes** (users can send their location in a chat).
   Digital purchases: No. Unrestricted internet: No.
-- **Data safety**:
-  - Collects data: **No.** Backchannel's developer receives nothing. Messages,
-    contacts and profile data go only to the Signal service, end-to-end
-    encrypted, which Play treats as not "collected" when the developer can't
-    read it.
-  - Shares data: **No.**
-  - Encrypted in transit: **Yes.**
-  - Deletion: users can delete their account from Settings > Account.
+- **Data safety** (corrected 2026-10-15): collects data **Yes** (the phone
+  number goes to Signal's servers, a third party, to create the account).
+  Encrypted in transit: Yes. Account creation: Username and other
+  authentication (phone number + SMS code). Declare only Personal info >
+  Phone number: collected, not shared, required, for App functionality and
+  Account management. Deletion: in the app, Settings > Account > Delete
+  account. Messages and contacts are end-to-end encrypted or hashed and not
+  readable by us, so they aren't declared.
 - **Permissions declarations**:
   - Foreground service type `phoneCall`: "Keeps voice and video calls
     running while the app is in the background."
