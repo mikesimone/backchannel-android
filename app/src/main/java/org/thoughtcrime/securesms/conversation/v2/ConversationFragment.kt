@@ -2719,6 +2719,16 @@ class ConversationFragment :
       )
     }
 
+    // BACKCHANNEL: reply privately to someone's group message
+    if (menuState.shouldShowReplyAction() && net.mikesimone.backchannel.PrivateReply.canReplyPrivately(recipient, getSelectedConversationMessage())) {
+      items.add(
+        ActionItem(CoreUiR.drawable.symbol_person_24, resources.getString(R.string.conversation_selection__menu_reply_privately)) {
+          net.mikesimone.backchannel.PrivateReply.open(requireActivity(), getSelectedConversationMessage())
+          finishActionMode()
+        }
+      )
+    }
+
     if (menuState.shouldShowEditAction()) {
       items.add(
         ActionItem(CoreUiR.drawable.symbol_edit_24, resources.getString(R.string.conversation_selection__menu_edit)) {
@@ -4433,6 +4443,7 @@ class ConversationFragment :
     override fun onActionSelected(action: ConversationReactionOverlay.Action) {
       when (action) {
         ConversationReactionOverlay.Action.REPLY -> handleReplyToMessage(conversationMessage)
+        ConversationReactionOverlay.Action.REPLY_PRIVATELY -> net.mikesimone.backchannel.PrivateReply.open(requireActivity(), conversationMessage) // BACKCHANNEL
         ConversationReactionOverlay.Action.EDIT -> handleEditMessage(conversationMessage)
         ConversationReactionOverlay.Action.FORWARD -> handleForwardMessageParts(conversationMessage.multiselectCollection.toSet())
         ConversationReactionOverlay.Action.RESEND -> handleResend(conversationMessage)

@@ -3,4 +3,6 @@
 <resources>
     <!-- Text formatting menu: apply bold and italic in one step -->
     <string name="TextFormatting_bold_italic">Bold italic</string>
+    <!-- Message menu: open your 1:1 chat with a group message's sender, with that message quoted -->
+    <string name="conversation_selection__menu_reply_privately">Reply privately</string>
 </resources>
