@@ -43,6 +43,11 @@
                 android:id="@+id/edittext_italic"
                 android:title="@string/TextFormatting_italic"
                 app:showAsAction="never" />
+            <!-- BACKCHANNEL: bold italic in one step -->
+            <item
+                android:id="@id/edittext_bold_italic"
+                android:title="@string/TextFormatting_bold_italic"
+                app:showAsAction="never" />
             <item
                 android:id="@+id/edittext_strikethrough"
                 android:title="@string/TextFormatting_strikethrough"

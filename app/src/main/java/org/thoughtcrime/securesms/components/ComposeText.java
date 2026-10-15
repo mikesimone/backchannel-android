@@ -349,6 +349,7 @@ public class ComposeText extends EmojiEditText {
 
         menu.add(0, R.id.edittext_bold, largestOrder, getContext().getString(R.string.TextFormatting_bold));
         menu.add(0, R.id.edittext_italic, largestOrder, getContext().getString(R.string.TextFormatting_italic));
+        menu.add(0, R.id.edittext_bold_italic, largestOrder, getContext().getString(R.string.TextFormatting_bold_italic)); // BACKCHANNEL
         menu.add(0, R.id.edittext_strikethrough, largestOrder, getContext().getString(R.string.TextFormatting_strikethrough));
         menu.add(0, R.id.edittext_monospace, largestOrder, getContext().getString(R.string.TextFormatting_monospace));
         menu.add(0, R.id.edittext_spoiler, largestOrder, getContext().getString(R.string.TextFormatting_spoiler));
@@ -579,6 +580,19 @@ public class ComposeText extends EmojiEditText {
 
     if (text == null) {
       return false;
+    }
+
+    // BACKCHANNEL: bold italic in one step
+    if (id == R.id.edittext_bold_italic) {
+      int biStart = getSelectionStart();
+      int biEnd   = getSelectionEnd();
+      clearComposingText();
+      net.mikesimone.backchannel.BoldItalic.toggle(text, biStart, biEnd);
+      Selection.setSelection(getText(), biEnd);
+      if (stylingChangedListener != null) {
+        stylingChangedListener.onStylingChanged();
+      }
+      return true;
     }
 
     if (id != R.id.edittext_bold &&

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: strings for Backchannel features (English only for now). -->
+<resources>
+    <!-- Text formatting menu: apply bold and italic in one step -->
+    <string name="TextFormatting_bold_italic">Bold italic</string>
+</resources>

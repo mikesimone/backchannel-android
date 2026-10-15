@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: ids for Backchannel features. -->
+<resources>
+    <item name="edittext_bold_italic" type="id" />
+</resources>

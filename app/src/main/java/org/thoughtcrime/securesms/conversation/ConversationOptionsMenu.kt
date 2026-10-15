@@ -199,6 +199,7 @@ internal object ConversationOptionsMenu {
       menu.findItem(R.id.menu_format_text_submenu).subMenu?.clearHeader()
       menu.findItem(R.id.edittext_bold).applyTitleSpan(MessageStyler.boldStyle())
       menu.findItem(R.id.edittext_italic).applyTitleSpan(MessageStyler.italicStyle())
+      menu.findItem(R.id.edittext_bold_italic)?.applyTitleSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD_ITALIC)) // BACKCHANNEL
       menu.findItem(R.id.edittext_strikethrough).applyTitleSpan(MessageStyler.strikethroughStyle())
       menu.findItem(R.id.edittext_monospace).applyTitleSpan(MessageStyler.monoStyle())
 
@@ -238,6 +239,7 @@ internal object ConversationOptionsMenu {
         R.id.menu_delete_chat -> callback.handleDeleteConversation()
         R.id.edittext_bold,
         R.id.edittext_italic,
+        R.id.edittext_bold_italic, // BACKCHANNEL
         R.id.edittext_strikethrough,
         R.id.edittext_monospace,
         R.id.edittext_spoiler,
