@@ -23,24 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - uses: actions/setup-python@v5
+        if: "env.HAVE_PLAY == 'true'"
+        with:
+          python-version: "3.12"
+
       - name: Upload listing
         if: "env.HAVE_PLAY == 'true'"
         run: |
-          gem install fastlane --no-document --user-install
-          export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
-          printenv PLAY_JSON > play.json
-          trap 'rm -f play.json' EXIT
-          # Changelogs belong to a release; leave them to the Release workflow.
-          mkdir -p "$RUNNER_TEMP/metadata"
-          cp -r fastlane/metadata/android "$RUNNER_TEMP/metadata/"
-          find "$RUNNER_TEMP/metadata" -type d -name changelogs -exec rm -r {} +
-          fastlane supply \
-            --json_key play.json \
-            --package_name net.mikesimone.backchannel \
-            --skip_upload_apk true \
-            --skip_upload_aab true \
-            --skip_upload_changelogs true \
-            --metadata_path "$RUNNER_TEMP/metadata/android"
+          python3 -m pip install --quiet google-api-python-client==2.154.0 google-auth==2.36.0
+          printenv PLAY_JSON > "$RUNNER_TEMP/play.json"
+          trap 'rm -f "$RUNNER_TEMP/play.json"' EXIT
+          PLAY_JSON="$RUNNER_TEMP/play.json" python3 backchannel/play_listing.py
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
 
