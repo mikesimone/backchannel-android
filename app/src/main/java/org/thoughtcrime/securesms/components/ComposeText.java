@@ -335,6 +335,8 @@ public class ComposeText extends EmojiEditText {
     spoilerRendererDelegate = new SpoilerRendererDelegate(this, true);
 
     addTextChangedListener(new ComposeTextStyleWatcher());
+    // BACKCHANNEL: markdown shortcuts (P9)
+    addTextChangedListener(new net.mikesimone.backchannel.Markdown.Watcher(this));
 
     setCustomSelectionActionModeCallback(new ActionMode.Callback() {
       @Override
@@ -540,6 +542,19 @@ public class ComposeText extends EmojiEditText {
       if (onPasteListener.onPaste(pasteText)) {
         return true;
       }
+    }
+
+    // BACKCHANNEL: pasted Unicode styles and markdown marks become Signal styles (P9)
+    if (id == android.R.id.paste || id == android.R.id.pasteAsPlainText) {
+      int     start   = Math.min(getSelectionStart(), getSelectionEnd());
+      int     before  = length() - Math.abs(getSelectionEnd() - getSelectionStart());
+      boolean handled = super.onTextContextMenuItem(id);
+      int     end     = start + (length() - before);
+      if (getText() != null && start >= 0 && end > start) {
+        net.mikesimone.backchannel.Markdown.afterPaste(getText(), start, end);
+        setSelection(Math.min(start + (getText().length() - before), getText().length()));
+      }
+      return handled;
     }
 
     return super.onTextContextMenuItem(id);

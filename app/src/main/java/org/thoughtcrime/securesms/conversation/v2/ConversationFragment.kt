@@ -2519,7 +2519,8 @@ class ConversationFragment :
   }
 
   private fun sendMessage(
-    body: String = composeText.editableText.toString().trim(),
+    // BACKCHANNEL: marks left in the text become styles at send (P9)
+    body: String = net.mikesimone.backchannel.Markdown.passBeforeSend(composeText.editableText).toString().trim(),
     mentions: List<Mention> = composeText.mentions,
     bodyRanges: BodyRangeList? = composeText.styling,
     messageToEdit: MessageId? = inputPanel.editMessageId,

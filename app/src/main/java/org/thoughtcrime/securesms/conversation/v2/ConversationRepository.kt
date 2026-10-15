@@ -750,6 +750,8 @@ class ConversationRepository(
       }
       .filterNot(Util::isEmpty)
       .joinTo(buffer = SpannableStringBuilder(), separator = "\n")
+      // BACKCHANNEL: copies carry styles as Unicode, ready for SMS (P9)
+      .let { net.mikesimone.backchannel.Markdown.forCopy(it) }
   }
 
   fun getRecipientContactPhotoBitmap(context: Context, requestManager: RequestManager, recipient: Recipient): Single<ShortcutInfoCompat> {
