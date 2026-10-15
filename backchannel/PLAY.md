@@ -37,6 +37,10 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
   (URL + password). Box "sign in details give full access": checked (no paid
   content). Reviewer number, code page and demo chats: to set up (needs a
   Twilio or other spare SMS number from Mike).
+  **Never a number Signal already uses anywhere** (not Ops Bot's
+  +1 440-252-2983, not the forwarder's, not Mike's): each review registers
+  the number on the reviewer's phone, which de-registers it everywhere
+  else, so Ops Bot would go dead on Signal across the fleet.
 - **Target audience**: 18 and over (Signal's own terms require 13+, but an
   adult-only target avoids the Families policy).
 - **News app**: No. **Government app**: No. **Financial features**: None.
