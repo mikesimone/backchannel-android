@@ -94,7 +94,7 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 
 ## Still to do
 
-- Phone screenshots (2 to 8, 9:16) in
+- Phone screenshots: real captures only (Mike 2026-10-15 16:29 PT, no drawn mockups). Add group-feature shots (reply privately, forward, sticker replies) from a tester group; files in
   `fastlane/metadata/android/en-US/images/phoneScreenshots/`, made from a
   test account with no real names in view.
 
