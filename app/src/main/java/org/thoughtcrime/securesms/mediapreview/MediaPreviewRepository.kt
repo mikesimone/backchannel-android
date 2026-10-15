@@ -83,6 +83,13 @@ class MediaPreviewRepository {
           if (itemPosition == -1) {
             Log.w(TAG, "Unable to find target image for $startingAttachmentId")
           }
+
+          // BACKCHANNEL: the viewer steps only through the opened message's attachments
+          val startingRecord = mediaRecords.getOrNull(itemPosition)
+          if (startingRecord != null) {
+            mediaRecords.retainAll { it.messageId == startingRecord.messageId }
+            itemPosition = mediaRecords.indexOf(startingRecord)
+          }
         }
 
         Result(if (mediaRecords.isNotEmpty()) itemPosition.coerceIn(mediaRecords.indices) else itemPosition, mediaRecords)
