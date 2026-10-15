@@ -9,9 +9,12 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 ## One-time steps in Play Console (Mike)
 
 1. **Create app**: name Backchannel, English (US), App, Free; accept the
-   declarations.
-2. **Users and permissions**: invite the Play API service account (the one
-   Chatshot uses) with access to Backchannel: releases and store listing.
+   declarations. **Turn off "automatic protection"** (the installer check):
+   it would tell GitHub/Obtainium/F-Droid users to reinstall from Play,
+   which loses their messages, and it changes the app's code.
+2. **Users and permissions**: the Play API service account Chatshot uses
+   (`claude-app-dev@cloudflare-oauth-505105...`): Manage > App permissions,
+   add Backchannel with access to Backchannel: releases and store listing.
 3. **Secret**, on Six:
    `gh secret set PLAY_SERVICE_ACCOUNT_JSON -R mikesimone/backchannel-android < ~/.chatshot-toolchain/play-credentials.json`
 4. **First AAB by hand**: Play accepts API uploads only after one upload in
