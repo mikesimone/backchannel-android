@@ -60,6 +60,12 @@ updater.
   `app/gradle.properties`, so a Backchannel-only release on the same Molly
   version still upgrades.
 
+To verify an APK, its signing certificate's SHA-256 fingerprint is:
+
+```
+19:6E:50:45:C7:6E:0D:E3:5D:6A:2C:B3:84:A4:67:02:2E:C5:36:07:9C:AE:AE:CF:4F:DA:F3:7F:B8:1F:44:62
+```
+
 ## Building
 
 Same as Molly: see [BUILDING.md](BUILDING.md) and
