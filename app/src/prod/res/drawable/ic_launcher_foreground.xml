@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: Backchannel launcher icon (same mark as the web page). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <group android:scaleX="0.62" android:scaleY="0.62" android:translateX="14.3" android:translateY="11.8">
+    <path android:pathData="M30,34h50a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8H50l-14,12V78h-6a8,8 0,0 1,-8 -8V42a8,8 0,0 1,8 -8z" android:fillColor="#FFFFFFFF"/>
+    <path android:pathData="M96,50h2a8,8 0,0 1,8 8v26a8,8 0,0 1,-8 8h-4v10L82,92H60a8,8 0,0 1,-7 -4h29a14,14 0,0 0,14 -14z" android:fillColor="#FFBFE9E2"/>
+  </group>
+</vector>

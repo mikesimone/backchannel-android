@@ -44,6 +44,10 @@ val baseAppFileName = getCiEnv("CI_APP_FILENAME") ?: properties["baseAppFileName
 val basePackageId = getCiEnv("CI_PACKAGE_ID") ?: properties["basePackageId"] as String
 val buildVariants = getCiEnv("CI_BUILD_VARIANTS") ?: properties["buildVariants"] as String
 val forceInternalUserFlag = getCiEnv("CI_FORCE_INTERNAL_USER_FLAG") ?: properties["forceInternalUserFlag"] as String
+// BACKCHANNEL: our release number on top of Molly's version
+val backchannelRevision = (properties["backchannelRevision"] as String).toInt().also {
+  require(it in 0..9) { "backchannelRevision must be 0-9" }
+}
 
 fun getCiEnv(name: String) = if (ciEnabled) System.getenv(name).takeUnless { it.isNullOrBlank() } else null
 
@@ -160,7 +164,8 @@ android {
   defaultConfig {
     val sourceVersionNameWithRevision = "${canonicalVersionName}-${mollyRevision}"
 
-    versionCode = (canonicalVersionCode * maxHotfixVersions) + mollyRevision + currentHotfixVersion
+    // BACKCHANNEL: one more digit for our own releases on the same Molly version.
+    versionCode = ((canonicalVersionCode * maxHotfixVersions) + mollyRevision + currentHotfixVersion) * 10 + backchannelRevision
     versionName = if (ciEnabled) requireCommitTag() else sourceVersionNameWithRevision
 
     minSdk = libs.versions.minSdk.get().toInt()

@@ -1,49 +1,77 @@
-name: Sync Upstream
+# BACKCHANNEL: replaces Molly's Signal sync. Merges each new Molly release
+# into main, regenerates the Backchannel strings, tags it and builds a
+# release. A merge conflict opens an issue and stops.
+name: Sync Molly
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2,18,22 * * *'
+    - cron: '17 13 * * *' # daily, 06:17 Pacific (PDT)
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
 
 jobs:
   sync:
-    name: Sync
+    name: Merge latest Molly release
     runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.merge.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: upstream-main
+          ref: main
           fetch-depth: 0
-          lfs: true
-          persist-credentials: false
+          # A PAT with "workflow" scope is needed when Molly changes files
+          # under .github/workflows; GITHUB_TOKEN can't push those.
+          token: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
 
-      - run: gh auth setup-git
+      - name: Merge
+        id: merge
+        run: |
+          git config user.name "Backchannel sync"
+          git config user.email "sync@backchannel.invalid"
+          git config merge.ours.driver true
+          git config merge.theirs.driver 'cp -- %B %A'
+          git remote add molly https://github.com/mollyim/mollyim-android.git
+          GIT_LFS_SKIP_SMUDGE=1 git fetch --no-tags molly '+refs/tags/v*:refs/tags/v*'
+          latest=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$' | sort -V | tail -1)
+          echo "Latest Molly release: $latest"
+          if git merge-base --is-ancestor "$latest" HEAD; then
+            echo "Already merged."
+            exit 0
+          fi
+          if ! GIT_LFS_SKIP_SMUDGE=1 git merge --no-ff --no-edit -m "Merge Molly $latest" "$latest"; then
+            files=$(git diff --name-only --diff-filter=U)
+            git merge --abort
+            printf 'Merging Molly %s into main conflicts in:\n\n```\n%s\n```\n\nMerge it by hand, run `python3 backchannel/rebrand_strings.py`, reset `backchannelRevision=1` in app/gradle.properties, and push with a tag `%s-bc1`.\n' \
+              "$latest" "$files" "$latest" > issue.md
+            gh issue create --title "Molly $latest needs a manual merge" --body-file issue.md
+            exit 1
+          fi
+          python3 backchannel/rebrand_strings.py
+          sed -i 's/^backchannelRevision=.*/backchannelRevision=1/' app/gradle.properties
+          git add -A app/src/prod/res app/gradle.properties
+          git diff --cached --quiet || git commit -m "Backchannel: strings and revision for Molly $latest"
+          tag="${latest}-bc1"
+          git tag "$tag"
+          git push origin main
+          # Tag pushed with GITHUB_TOKEN so it does not also trigger release.yml
+          # (the release job below builds it).
+          git -c http.https://github.com/.extraheader= push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: git remote add upstream https://github.com/signalapp/Signal-Android.git
-      - run: git pull --ff-only upstream main
-        env:
-          GIT_LFS_SKIP_SMUDGE: 1
-
-      - run: git fetch --tags upstream
-      - run: git lfs fetch --all upstream
-      - run: git push origin upstream-main
-        env:
-          GH_TOKEN: ${{ secrets.SYNC_PAT }}
-
-      - name: Track upstream stable release
-        run: |
-          curl -fsSL -o latest.json https://updates.signal.org/android/latest.json
-          tag="v$(jq -r .versionName latest.json)"
-          if ! git rev-parse -q --verify "refs/tags/${tag}"; then
-            echo "::notice::tag ${tag} not pushed to upstream yet, skipping"
-            exit 0
-          fi
-          git push -f origin "${tag}^{commit}:refs/heads/upstream-stable"
-        env:
-          GH_TOKEN: ${{ secrets.SYNC_PAT }}
+  release:
+    name: Release
+    needs: sync
+    if: needs.sync.outputs.tag != ''
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.sync.outputs.tag }}
+    secrets: inherit

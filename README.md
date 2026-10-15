@@ -1,153 +1,73 @@
-# Molly
+# Backchannel for Android
 
-[![Test](https://github.com/mollyim/mollyim-android/workflows/Test/badge.svg)](https://github.com/mollyim/mollyim-android/actions)
-[![Reproducible build](https://github.com/mollyim/mollyim-android/actions/workflows/reprocheck.yml/badge.svg)](https://github.com/mollyim/mollyim-android/actions/workflows/reprocheck.yml)
-[![Translation status](https://hosted.weblate.org/widgets/molly-instant-messenger/-/svg-badge.svg)](https://hosted.weblate.org/engage/molly-instant-messenger/?utm_source=widget)
-[![Financial contributors](https://opencollective.com/mollyim/tiers/badge.svg)](https://opencollective.com/mollyim#category-CONTRIBUTE)
-[![Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=flat-square)](https://cloudsmith.com)
+_Signal for people who actually have friends._
 
-Molly is a hardened version of [Signal](https://github.com/signalapp/Signal-Android) for Android, the fast simple yet secure messaging app by [Signal Foundation](https://signal.org).
+Backchannel for Android is a Signal client for Android. It's a fork of
+[Molly](https://github.com/mollyim/mollyim-android), which is itself a
+hardened fork of [Signal for Android](https://github.com/signalapp/Signal-Android).
+It connects to Signal's servers, so you chat with your Signal contacts as
+usual, and it adds the extras from
+[Backchannel](https://github.com/mikesimone/backchannel), the web client.
 
-## Introduction
+Backchannel is not made, endorsed or supported by Signal Messenger or by
+the Molly project. "Signal" is Signal Messenger's trademark and is used
+here only to say what this works with.
 
-Back in 2018, Signal allowed the user to set a passphrase to secure the local message database. But this option was removed with the introduction of file-based encryption on Android. Molly brings it back again with additional security features.
+**Status: early.** The first builds are Molly with Backchannel's name and
+icon. Backchannel's own features follow; the plan and feature list are in
+[backchannel/android](https://github.com/mikesimone/backchannel/tree/main/android).
 
-Molly connects to Signal's servers, so you can chat with your Signal contacts seamlessly. Before signing up, please remember to review the [Signal Terms & Privacy Policy](https://signal.org/legal/).
+## Signing up
 
-We update Molly every two weeks to include the latest Signal features and fixes. The exceptions are security patches, which are applied as soon as they are available.
+Either way works:
 
-## Download
+- **As your main Signal app:** register your phone number, or move over
+  from Signal with a Signal backup.
+- **As a linked device:** keep Signal on your phone and link Backchannel
+  to it, like Signal Desktop.
 
-You can download the app from GitHub's [Releases](https://github.com/mollyim/mollyim-android/releases/latest) page or install it from the [Molly F-Droid Repo](https://molly.im/fdroid/):
+## Notifications
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://molly.im/fdroid/)
+Settings > Notifications picks how messages reach you, as in Molly:
 
-There are two versions available: **Molly** or **Molly-FOSS**. Learn the differences [below](#free-and-open-source) and download the right one for you.
+- **Google push** (when Google Play is on the phone): Signal's server
+  sends an empty wake-up through Google, and the app fetches the message
+  from Signal itself. Best on battery.
+- **Kept-open connection:** no Google; the app holds its own connection
+  to Signal. Uses more battery; allow it to run unrestricted.
+- **UnifiedPush**, through your own MollySocket server.
 
-You can also get **Molly-FOSS** from [Accrescent](https://accrescent.app/):
+## Install and update
 
-<a href="https://accrescent.app/app/im.molly.app">
-   <img alt="Get it on Accrescent"
-      src="https://accrescent.app/badges/get-it-on.png"
-      height="80">
-</a>
+Releases are on this repo's
+[Releases](https://github.com/mikesimone/backchannel-android/releases)
+page. To get updates automatically, add this repo to
+[Obtainium](https://github.com/ImranR98/Obtainium). There's no in-app
+updater.
 
-To [verify](https://developer.android.com/studio/command-line/apksigner#usage-verify) the APK, use the following signing certificate fingerprints:
-```
-SHA-256: 6aa80fdf4a8cc13737cfb434fc0cde486f09cf8fcda21a67bea5ee1ca2700886
-SHA-1: 49ce310cdd0c09c8c34eb31a8005c6bf13f5a4f1
-```
+## How this fork is kept
 
-## Features
+- `main` is Molly plus Backchannel's changes. Every change to Molly or
+  Signal code is marked `// BACKCHANNEL:`; new code lives under
+  `backchannel/` and `app/src/prod/`.
+- Molly's strings say "Molly"; `backchannel/rebrand_strings.py` copies
+  those strings, renamed, into `app/src/prod/res`, so Molly's own string
+  files stay untouched.
+- The **Sync Molly** workflow merges each new Molly release daily, tags
+  it `<molly tag>-bc1`, and builds a signed release. A conflict opens an
+  issue instead.
+- Version codes are Molly's times ten plus `backchannelRevision` from
+  `app/gradle.properties`, so a Backchannel-only release on the same Molly
+  version still upgrades.
 
-Molly has unique features compared to Signal:
+## Building
 
-- **Data encryption at rest** - Protect your app database with [passphrase encryption](https://github.com/mollyim/mollyim-android/wiki/Data-Encryption-At-Rest)
-- **Secure RAM wiper** - Securely shred sensitive data from device memory
-- **Automatic lock** - Lock the app automatically under user-defined conditions
-- **Multi-device support** - Link multiple devices to a single Signal account, including Android tablets
-- **UnifiedPush** - Receive push notifications without Google through the UnifiedPush protocol
-- **Block unknown contacts** - Block messages and calls from unknown senders for security and anti-spam
-- **Disappearing call history** - Clear call logs together with expiring messages
-- **Custom backup scheduling** - Set daily or weekly interval and the number of backups to retain
-- **SOCKS proxy and Tor support** - Tunnel app network traffic via proxy and Orbot
-- **Debug logs are optional** - Android logging can be disabled
-
-Additionally, you will find all the features of Signal, along with some minor tweaks and improvements.
-
-## Free and Open-Source
-
-Molly is open-source just like Signal. But Signal depends on proprietary Google software for some features.
-
-To support a 100% free and auditable app, Molly comes in two versions: one with proprietary blobs like Signal, and one without. They are called Molly and Molly-FOSS, respectively. You can install the flavor of your choice at any time, and it will replace any previously installed version. The data and settings will be preserved so that you do not have to re-register.
-
-### Feature Comparison
-
-Here's how some key features work in different versions of the app:
-
-| Feature                           | Molly-FOSS       | Molly                | Signal               |
-| --------------------------------- | ---------------- | -------------------- | -------------------- |
-| Push notifications <sup>(1)</sup> | ✔ WebSocket<br>✔ UnifiedPush | ⚠ FCM<br>✔ WebSocket<br>✔ UnifiedPush | ⚠ FCM<br>✔ WebSocket |
-| Location sharing                 | ✔ OpenStreetMap  | ⚠ Google Maps        | ⚠ Google Maps        |
-
-<sup>(1)</sup> You might need to turn off system-level battery restrictions for the app to receive messages when the app isn't open.
-
-### UnifiedPush
-
-[UnifiedPush](https://unifiedpush.org/) is an open standard for delivering push notifications, offering a privacy-friendly alternative to Google's proprietary FCM service. It allows users to choose their own notification distributor.
-
-> [!IMPORTANT]
-> To use UnifiedPush notifications, you need access to a [MollySocket](https://github.com/mollyim/mollysocket) server to link your Signal account to UnifiedPush. You can either run MollySocket on a server you control (strongly advised) or use a public instance.
-
-Currently, UnifiedPush is unavailable for linked devices.
-
-## Compatibility with Signal
-
-Molly and Signal apps can be installed on the same device. If you need a second number for messaging, you can register Molly with a different number while keeping Signal active. Any phone number capable of receiving SMS or calls can be used during registration.
-
-If you wish to use the same phone number for both Molly and Signal, you must register Molly as a linked device. Registering the same number independently on both apps will result in only the most recently registered app staying active, while the other will go offline.
-
-For Signal users looking to switch to Molly without changing the phone number, please refer to the [Migrating From Signal](https://github.com/mollyim/mollyim-android/wiki/Migrating-From-Signal) guide on the wiki.
-
-## Backups
-
-Backups are fully compatible. Signal [backups](https://support.signal.org/hc/en-us/articles/360007059752-Backup-and-Restore-Messages) can be restored in Molly, and the other way around, simply by choosing the backup folder and file. However, to import a backup from Signal, you must use a matching or newer version of Molly.
-
-## Feedback
-
-- [Submit bugs and feature requests](https://github.com/mollyim/mollyim-android/issues) on GitHub
-- Join us at [#mollyim:matrix.org](https://matrix.to/#/#mollyim:matrix.org) on Matrix (via space: [#mollyim-space:matrix.org](https://matrix.to/#/#mollyim-space:matrix.org))
-- For news, tips, and tricks, follow [@mollyim](https://fosstodon.org/@mollyim) on Mastodon
-
-## Reproducible Builds
-
-Molly supports reproducible builds, so that anyone can run the build process to reproduce the same APK as the original release.
-
-Please check the guide in the [reproducible-builds](https://github.com/mollyim/mollyim-android/blob/master/reproducible-builds) directory.
-
-## Changelog
-
-See the [Changelog](https://github.com/mollyim/mollyim-android/wiki/Changelog) to view recent changes.
+Same as Molly: see [BUILDING.md](BUILDING.md) and
+[reproducible-builds](reproducible-builds). Releases are signed with
+Backchannel's own key, held only in this repo's Actions secrets
+(`SECRET_KEYSTORE`, `SECRET_KEYSTORE_ALIAS`, `SECRET_KEYSTORE_PASSWORD`).
 
 ## License
 
-Licensed under the GNU Affero General Public License, version 3 only
-([`AGPL-3.0-only`](LICENSE)).
-
-See [LEGAL.md](LEGAL.md) for legal and copyright information.
-
-## Acknowledgements
-
-Molly is an independent project built on code published by Signal. We are
-deeply grateful to the Signal contributors for the work we build on.
-
-Thanks to the following organizations for supporting the **Molly** project.
-
-<div align="center">
-<table>
-<tr>
-  <td>
-    <a href="https://nlnet.nl/" target="_blank">
-      <img src="https://nlnet.nl/logo/banner.svg" alt="NLnet logo" height="56" />
-    </a>
-  </td>
-  <td>
-    <a href="https://bahnhof.cloud/en/" target="_blank">
-      <img src="https://upload.wikimedia.org/wikipedia/de/c/c0/Bahnhof_AB_logo.svg" alt="Bahnhof logo" height="56" />
-    </a>
-  </td>
-  <td>
-    <a href="https://cloudsmith.com/blog/cloudsmith-loves-opensource/" target="_blank">
-      <img src="https://raw.githubusercontent.com/opswithranjan/CloudsmithLogo/main/CloudsmithLogoCropped.jpeg" alt="Cloudsmith logo" height="32" />
-    </a>
-  </td>
-  <td>
-    <a href="https://www.jetbrains.com/community/opensource/" target="_blank">
-      <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg" alt="JetBrains logo" height="32" />
-    </a>
-  </td>
-</tr>
-</table>
-</div>
+GNU Affero General Public License, version 3 only
+([`AGPL-3.0-only`](LICENSE)), as Molly and Signal. See [LEGAL.md](LEGAL.md).

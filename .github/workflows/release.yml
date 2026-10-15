@@ -11,7 +11,7 @@ on:
         type: string
 
 permissions:
-  contents: read # to fetch code (actions/checkout)
+  contents: write # BACKCHANNEL: create and publish releases with GITHUB_TOKEN
 
 env:
   TAG_REF: "${{ inputs.version || github.ref_name }}"
@@ -177,5 +177,11 @@ jobs:
 
       - name: Upload APKs to GitHub release
         run: gh release upload "$TAG_REF" ./apk/*/release/*.apk --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
+
+      # BACKCHANNEL: publish right away so Obtainium sees it (Molly reviews drafts by hand).
+      - name: Publish release
+        run: gh release edit "$TAG_REF" --draft=false --latest
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}

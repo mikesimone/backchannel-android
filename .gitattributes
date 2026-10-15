@@ -9,3 +9,5 @@
 /feature/*/src/main/res/values-*/strings.xml merge=theirs
 /lib/*/src/main/res/values-*/strings.xml merge=theirs
 /gradle/verification-metadata.xml merge=union
+# BACKCHANNEL: keep our README when merging Molly (the sync workflow sets merge.ours.driver).
+/README.md merge=ours

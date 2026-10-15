@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: notification icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+  <group android:scaleX="0.25" android:scaleY="0.25" android:translateX="-4" android:translateY="-5">
+    <path android:pathData="M30,34h50a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8H50l-14,12V78h-6a8,8 0,0 1,-8 -8V42a8,8 0,0 1,8 -8z" android:fillColor="#000"/>
+    <path android:pathData="M96,50h2a8,8 0,0 1,8 8v26a8,8 0,0 1,-8 8h-4v10L82,92H60a8,8 0,0 1,-7 -4h29a14,14 0,0 0,14 -14z" android:fillColor="#000"/>
+  </group>
+</vector>
