@@ -124,7 +124,7 @@ public final class Megaphones {
       put(Event.ONBOARDING, shouldShowOnboardingMegaphone(context) ? ALWAYS : NEVER);
       put(Event.TURN_OFF_CENSORSHIP_CIRCUMVENTION, shouldShowTurnOffCircumventionMegaphone() ? RecurringSchedule.every(TimeUnit.DAYS.toMillis(7)) : NEVER);
       put(Event.ENABLE_APP_UPDATES, shouldShowEnableAppUpdatesMegaphone(context) ? ALWAYS : NEVER);
-      put(Event.DONATE_MOLLY, shouldShowDonateMegaphone(context, Event.DONATE_MOLLY, records) ? ShowForDurationSchedule.showForDays(7) : NEVER);
+      put(Event.DONATE_MOLLY, NEVER); // BACKCHANNEL: no donate prompt (it pointed at Molly's Open Collective)
       put(Event.REMOTE_MEGAPHONE, shouldShowRemoteMegaphone(records) ? RecurringSchedule.every(TimeUnit.DAYS.toMillis(1)) : NEVER);
       put(Event.LINKED_DEVICE_INACTIVE, shouldShowLinkedDeviceInactiveMegaphone() ? RecurringSchedule.every(TimeUnit.DAYS.toMillis(3)) : NEVER);
 
