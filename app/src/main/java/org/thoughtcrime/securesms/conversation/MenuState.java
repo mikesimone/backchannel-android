@@ -209,8 +209,7 @@ public final class MenuState {
                                       !hasPendingMedia  &&
                                       !hasGift          &&
                                       !hasPayment       &&
-                                      !hasPoll          &&
-                                      !hasPollTerminate &&
+                                      // BACKCHANNEL: polls, open or ended, can be forwarded (as a new copy)
                                       selectedParts.size() <= MAX_FORWARDABLE_COUNT;
 
     int uniqueRecords = selectedParts.stream()

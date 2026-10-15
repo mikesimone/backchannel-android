@@ -115,6 +115,11 @@ data class MultiselectForwardFragmentArgs @JvmOverloads constructor(
         .withTimestamp(conversationMessage.messageRecord.timestamp)
         .withExpiration(conversationMessage.messageRecord.expireStarted + conversationMessage.messageRecord.expiresIn)
 
+      // BACKCHANNEL: a poll is forwarded as a fresh copy of the poll, nothing else
+      net.mikesimone.backchannel.PollForward.pollToForward(conversationMessage.messageRecord)?.let { poll ->
+        return builder.withPoll(poll).build()
+      }
+
       if (conversationMessage.multiselectCollection.isTextSelected(selectedParts)) {
         val mediaMessage: MmsMessageRecord? = conversationMessage.messageRecord as? MmsMessageRecord
         val textSlideUri = mediaMessage?.slideDeck?.textSlide?.uri

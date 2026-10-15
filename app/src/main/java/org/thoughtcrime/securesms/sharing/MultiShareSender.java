@@ -91,6 +91,23 @@ public final class MultiShareSender {
     List<OutgoingMessage>      storiesBatch                      = new LinkedList<>();
     ChatColors                 generatedTextStoryBackgroundColor = TextStoryBackgroundColors.getRandomBackgroundColor();
 
+    // BACKCHANNEL: a forwarded poll goes to each chat as its own new poll
+    if (multiShareArgs.getPoll() != null) {
+      for (ContactSearchKey.RecipientSearchKey recipientSearchKey : multiShareArgs.getRecipientSearchKeys()) {
+        Recipient recipient = Recipient.resolved(recipientSearchKey.getRecipientId());
+        if (recipientSearchKey.isStory()) {
+          results.add(new MultiShareSendResult(recipientSearchKey, MultiShareSendResult.Type.INVALID_SHARE_TO_STORY));
+        } else if (recipient.isMmsGroup() || recipient.getEmail().isPresent()) {
+          results.add(new MultiShareSendResult(recipientSearchKey, MultiShareSendResult.Type.MMS_NOT_ENABLED));
+        } else {
+          net.mikesimone.backchannel.PollForward.send(recipient, multiShareArgs.getPoll());
+          results.add(new MultiShareSendResult(recipientSearchKey, MultiShareSendResult.Type.SUCCESS));
+        }
+        ThreadUtil.sleep(5);
+      }
+      return new MultiShareSendResultCollection(results);
+    }
+
     try {
       primarySlideDeck = buildSlideDeck(context, multiShareArgs);
     } catch (SlideNotFoundException e) {

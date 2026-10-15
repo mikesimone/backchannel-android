@@ -18,6 +18,7 @@ import org.thoughtcrime.securesms.database.model.databaseprotos.BodyRangeList;
 import org.thoughtcrime.securesms.linkpreview.LinkPreview;
 import org.signal.core.models.media.Media;
 import org.thoughtcrime.securesms.stickers.StickerLocator;
+import org.thoughtcrime.securesms.polls.Poll;
 import org.thoughtcrime.securesms.stories.Stories;
 import org.thoughtcrime.securesms.util.MediaUtil;
 import org.signal.core.util.ParcelUtil;
@@ -50,6 +51,7 @@ public final class MultiShareArgs implements Parcelable {
   private final boolean               isTextStory;
   private final BodyRangeList         bodyRanges;
   private final List<Contact>         sharedContacts;
+  private final Poll                  poll; // BACKCHANNEL: poll to many chats
 
   private MultiShareArgs(@NonNull Builder builder) {
     contactSearchKeys = builder.contactSearchKeys;
@@ -67,6 +69,7 @@ public final class MultiShareArgs implements Parcelable {
     isTextStory       = builder.isTextStory;
     bodyRanges        = builder.bodyRanges;
     sharedContacts    = builder.sharedContacts == null ? new ArrayList<>() : new ArrayList<>(builder.sharedContacts);
+    poll              = builder.poll;
   }
 
   protected MultiShareArgs(Parcel in) {
@@ -106,6 +109,12 @@ public final class MultiShareArgs implements Parcelable {
     }
     this.bodyRanges = bodyRanges;
     sharedContacts  = in.createTypedArrayList(Contact.CREATOR);
+    poll            = in.readParcelable(Poll.class.getClassLoader());
+  }
+
+  // BACKCHANNEL: poll to many chats
+  public @Nullable Poll getPoll() {
+    return poll;
   }
 
   public Set<ContactSearchKey> getContactSearchKeys() {
@@ -176,7 +185,7 @@ public final class MultiShareArgs implements Parcelable {
   }
 
   public boolean isValidForStories() {
-    if (isViewOnce() || stickerLocator != null) {
+    if (isViewOnce() || stickerLocator != null || poll != null) {
       return false;
     }
 
@@ -277,6 +286,7 @@ public final class MultiShareArgs implements Parcelable {
     }
 
     dest.writeTypedList(sharedContacts);
+    dest.writeParcelable(poll, flags);
   }
 
   public Builder buildUpon() {
@@ -297,11 +307,12 @@ public final class MultiShareArgs implements Parcelable {
                                            .withExpiration(expiresAt)
                                            .asTextStory(isTextStory)
                                            .withBodyRanges(bodyRanges)
-                                           .withSharedContacts(sharedContacts);
+                                           .withSharedContacts(sharedContacts)
+                                           .withPoll(poll);
   }
 
   private boolean requiresInterstitial() {
-    return stickerLocator == null &&
+    return stickerLocator == null && poll == null &&
            (!media.isEmpty() ||
             !TextUtils.isEmpty(draftText) ||
             MediaUtil.isImageOrVideoType(dataType) ||
@@ -326,6 +337,7 @@ public final class MultiShareArgs implements Parcelable {
     private boolean             isTextStory;
     private BodyRangeList       bodyRanges;
     private List<Contact>       sharedContacts;
+    private Poll                poll;
 
     public Builder() {
       this(Collections.emptySet());
@@ -402,6 +414,12 @@ public final class MultiShareArgs implements Parcelable {
 
     public @NonNull Builder withSharedContacts(List<Contact> sharedContacts) {
       this.sharedContacts = new ArrayList<>(sharedContacts);
+      return this;
+    }
+
+    // BACKCHANNEL: poll to many chats
+    public @NonNull Builder withPoll(@Nullable Poll poll) {
+      this.poll = poll;
       return this;
     }
 
