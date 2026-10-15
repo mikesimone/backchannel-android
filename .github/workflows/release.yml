@@ -188,8 +188,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
 
   # BACKCHANNEL: AAB to Play closed testing (track "alpha"; Mike 2026-10-15: no internal testing).
-  # Runs only once the PLAY_SERVICE_ACCOUNT_JSON secret exists. Play takes
-  # API uploads only after the first AAB went in by hand in Play Console.
+  # Runs only once the PLAY_SERVICE_ACCOUNT_JSON secret exists. Mike 2026-10-15:
+  # hands-off like Chatshot. Status "completed" commits the edit, which sends it
+  # for review. Until Google first approves the app, Play only takes drafts, so
+  # a "draft app" refusal retries as a draft.
   play:
     name: Google Play
     runs-on: ubuntu-24.04
@@ -201,6 +203,7 @@ jobs:
         if: "env.HAVE_PLAY == 'true'"
         with:
           ref: "${{ env.TAG_REF }}"
+          fetch-depth: 0
 
       - name: Download bundle
         if: "env.HAVE_PLAY == 'true'"
@@ -211,19 +214,36 @@ jobs:
 
       - name: Upload to Play closed testing
         if: "env.HAVE_PLAY == 'true'"
+        shell: bash
         run: |
+          set -o pipefail
           gem install fastlane --no-document --user-install
           export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
           printenv PLAY_JSON > play.json
           trap 'rm -f play.json' EXIT
-          fastlane supply \
-            --json_key play.json \
-            --package_name net.mikesimone.backchannel \
-            --aab "$(ls bundle/*/*.aab | head -1)" \
-            --track "${PLAY_TRACK:-alpha}" \
-            --release_status "${PLAY_RELEASE_STATUS:-draft}" \
-            --metadata_path fastlane/metadata/android \
-            --skip_upload_screenshots "${{ vars.PLAY_SKIP_SCREENSHOTS || 'false' }}"
+          # Release notes are changelogs/default.txt when it changed since the
+          # previous tag; otherwise (daily Molly merges) a generic note.
+          notes=fastlane/metadata/android/en-US/changelogs/default.txt
+          prev=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$prev" ] && git diff --quiet "$prev" HEAD -- "$notes"; then
+            echo "Keeps up with the latest Signal and Molly fixes." > "$notes"
+          fi
+          echo "Release notes:"; cat "$notes"; echo
+          supply() {
+            fastlane supply \
+              --json_key play.json \
+              --package_name net.mikesimone.backchannel \
+              --aab "$(ls bundle/*/*.aab | head -1)" \
+              --track "${PLAY_TRACK:-alpha}" \
+              --release_status "$1" \
+              --metadata_path fastlane/metadata/android \
+              --skip_upload_screenshots "${{ vars.PLAY_SKIP_SCREENSHOTS || 'false' }}" 2>&1 | tee supply.log
+          }
+          if ! supply "${PLAY_RELEASE_STATUS:-completed}"; then
+            grep -qi 'draft app' supply.log || exit 1
+            echo "::warning::Play still treats the app as a draft; uploaded as a draft release instead."
+            supply draft
+          fi
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           PLAY_RELEASE_STATUS: ${{ vars.PLAY_RELEASE_STATUS }}

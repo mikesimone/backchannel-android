@@ -18,8 +18,22 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 3. **Secret**, on Six:
    `gh secret set PLAY_SERVICE_ACCOUNT_JSON -R mikesimone/backchannel-android < ~/.chatshot-toolchain/play-credentials.json`
 4. **Closed testing** (Mike 2026-10-15: no internal testing): releases go
-   to track `alpha` as drafts. Add testers (email list or Google Group)
+   to track `alpha`. Add testers (email list or Google Group)
    under Test and release > Testing > Closed testing.
+
+## Hands-off releases (Mike 2026-10-15: "managing all aspects of it")
+
+- Every release tag uploads to `alpha` as **completed**, so the commit sends it
+  for review with nothing to click in the Console. Until Google approves the
+  app once, Play takes only drafts; the job then falls back to a draft (a
+  warning in the run) and Mike sends that first one for review by hand.
+- Release notes: `fastlane/metadata/android/en-US/changelogs/default.txt`.
+  Update it in the commit that ships a feature; if it didn't change since the
+  previous tag (daily Molly merges), the job uses a generic "latest Signal and
+  Molly fixes" note.
+- Production is never automatic: run the `Play promote` workflow
+  (alpha to production, optional staged rollout) only when Mike says go.
+- Override per repo with Actions variables `PLAY_TRACK`, `PLAY_RELEASE_STATUS`.
 5. **App signing**: done 2026-10-15 via PEPK; choose **use my own key**
    (export and upload with PEPK), never a Google-generated key. The key is the one
    in `~/.config/backchannel-android` on Six (SHA-256
