@@ -81,6 +81,23 @@ app talks only to the Signal
 service, with Signal's end-to-end encryption. Google push, when the phone
 has it, carries only a wake-up signal with no message content.
 
+## Deleting your account
+
+Backchannel has no account of its own: your account is your Signal
+account, and Signal holds it. There is no server of ours with anything to
+delete.
+
+- **Registered with your phone number:** Settings > Account > Delete
+  account. This deletes your Signal account and its data on Signal's
+  servers (profile, groups, contacts) and wipes the app's data on the
+  phone.
+- **Linked to Signal on another phone:** remove Backchannel from
+  Settings > Linked devices in Signal, then uninstall Backchannel. This
+  deletes its copy of your messages; your Signal account stays as it was.
+
+If you no longer have the phone, register your number again in
+Backchannel or Signal on a new one and delete the account there.
+
 ## License
 
 GNU Affero General Public License, version 3 only
