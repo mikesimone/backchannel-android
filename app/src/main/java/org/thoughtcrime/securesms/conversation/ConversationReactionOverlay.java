@@ -684,7 +684,7 @@ public final class ConversationReactionOverlay extends FrameLayout {
 
     // BACKCHANNEL: reply privately to someone's group message
     if (menuState.shouldShowReplyAction() && net.mikesimone.backchannel.PrivateReply.canReplyPrivately(conversationRecipient, conversationMessage)) {
-      items.add(new ActionItem(org.signal.core.ui.R.drawable.symbol_person_24, getResources().getString(R.string.conversation_selection__menu_reply_privately), () -> handleActionItemClicked(Action.REPLY_PRIVATELY)));
+      items.add(new ActionItem(R.drawable.symbol_person_24, getResources().getString(R.string.conversation_selection__menu_reply_privately), () -> handleActionItemClicked(Action.REPLY_PRIVATELY)));
     }
 
     if (menuState.shouldShowEditAction()) {

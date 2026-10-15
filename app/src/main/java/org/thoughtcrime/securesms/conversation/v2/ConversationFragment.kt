@@ -2723,7 +2723,7 @@ class ConversationFragment :
     // BACKCHANNEL: reply privately to someone's group message
     if (menuState.shouldShowReplyAction() && net.mikesimone.backchannel.PrivateReply.canReplyPrivately(recipient, getSelectedConversationMessage())) {
       items.add(
-        ActionItem(CoreUiR.drawable.symbol_person_24, resources.getString(R.string.conversation_selection__menu_reply_privately)) {
+        ActionItem(R.drawable.symbol_person_24, resources.getString(R.string.conversation_selection__menu_reply_privately)) {
           net.mikesimone.backchannel.PrivateReply.open(requireActivity(), getSelectedConversationMessage())
           finishActionMode()
         }
