@@ -50,9 +50,9 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
   number goes to Signal's servers, a third party, to create the account).
   Encrypted in transit: Yes. Account creation: Username and other
   authentication (phone number + SMS code). Declare only Personal info >
-  Phone number: collected, not shared, required, for App functionality and
+  Phone number: collected, not shared, not ephemeral, required, for
   Account management. Deletion: in the app, Settings > Account > Delete
-  account. Messages and contacts are end-to-end encrypted or hashed and not
+  account; web link README#deleting-your-account. Messages and contacts are end-to-end encrypted or hashed and not
   readable by us, so they aren't declared.
 - **Permissions declarations**:
   - Foreground service type `phoneCall`: "Keeps voice and video calls
