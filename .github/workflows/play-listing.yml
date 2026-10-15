@@ -1,0 +1,45 @@
+# BACKCHANNEL: push the store listing (fastlane/metadata/android) to Google
+# Play without a new build. Needs the PLAY_SERVICE_ACCOUNT_JSON secret.
+name: Play listing
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "fastlane/metadata/**"
+
+permissions:
+  contents: read
+
+jobs:
+  listing:
+    name: Update store listing
+    runs-on: ubuntu-24.04
+    env:
+      HAVE_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Upload listing
+        if: "env.HAVE_PLAY == 'true'"
+        run: |
+          gem install fastlane --no-document --user-install
+          export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
+          printenv PLAY_JSON > play.json
+          trap 'rm -f play.json' EXIT
+          fastlane supply \
+            --json_key play.json \
+            --package_name net.mikesimone.backchannel \
+            --skip_upload_apk true \
+            --skip_upload_aab true \
+            --skip_upload_changelogs true \
+            --metadata_path fastlane/metadata/android
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+      - name: Skipped
+        if: "env.HAVE_PLAY != 'true'"
+        run: echo "PLAY_SERVICE_ACCOUNT_JSON is not set; nothing uploaded."

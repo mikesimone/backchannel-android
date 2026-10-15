@@ -1,0 +1,28 @@
+Signal for people who actually have friends.
+
+Backchannel is a messaging app that talks to the Signal network. Your chats, calls and groups are the same ones your friends have in Signal, with the same end-to-end encryption. Backchannel only changes the app on your phone, to make big group chats and lots of friends easier to keep up with.
+
+Backchannel is not made by Signal and is not affiliated with Signal Messenger LLC or the Signal Foundation. It is built on Molly, an open-source hardened build of Signal for Android.
+
+WHAT BACKCHANNEL ADDS
+• Reply privately: answer someone's group message in a 1:1 chat, with their message quoted.
+• Forward to as many chats as you like, with your own message on top and real @mentions in groups.
+• Send one poll to many chats at once.
+• Markdown shortcuts: type *bold*, _italic_, ~strikethrough~ or `monospace` and it becomes real formatting. Backspace right after to undo.
+• Bold italic in one step from the format menu.
+• Copying a styled message gives you styled text you can paste anywhere, even into a text message.
+• Sticker replies.
+• The photo viewer stays inside the message you opened.
+
+EVERYTHING YOU EXPECT
+Private messages, groups, voice and video calls, voice notes, photos and files, reactions, polls, stickers, disappearing messages, stories, scheduled messages and more.
+
+TWO WAYS TO START
+• Register this phone number with Backchannel, as your main Signal app.
+• Or link Backchannel to the Signal app you already use, as a linked device.
+
+PRIVACY
+Backchannel collects nothing. There are no ads and no analytics. Your messages go only to the Signal network, end-to-end encrypted. Notifications use Google push when it's available, with a direct connection as the fallback.
+
+OPEN SOURCE
+Backchannel is free software under the GNU AGPLv3. Source code: https://github.com/mikesimone/backchannel-android

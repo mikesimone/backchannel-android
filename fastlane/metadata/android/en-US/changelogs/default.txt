@@ -1,0 +1,1 @@
+First release of Backchannel: reply privately, forward to any number of chats with @mentions, one poll to many chats, markdown shortcuts, bold italic, styled copies, sticker replies.

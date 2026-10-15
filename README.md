@@ -73,6 +73,14 @@ Same as Molly: see [BUILDING.md](BUILDING.md) and
 Backchannel's own key, held only in this repo's Actions secrets
 (`SECRET_KEYSTORE`, `SECRET_KEYSTORE_ALIAS`, `SECRET_KEYSTORE_PASSWORD`).
 
+## Privacy
+
+Backchannel collects nothing. There are no ads or analytics, and debug
+logs are sent only if you choose to. There is no server of ours: the
+app talks only to the Signal
+service, with Signal's end-to-end encryption. Google push, when the phone
+has it, carries only a wake-up signal with no message content.
+
 ## License
 
 GNU Affero General Public License, version 3 only
