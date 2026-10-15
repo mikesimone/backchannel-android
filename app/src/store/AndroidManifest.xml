@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: Play build. Google Play allows USE_EXACT_ALARM only for alarm
+     clock and calendar apps. Without it the app falls back to
+     SCHEDULE_EXACT_ALARM, which it already handles being denied (inexact
+     timers; scheduled messages ask the user to allow exact alarms). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
+
+</manifest>

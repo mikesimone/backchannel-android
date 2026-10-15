@@ -5,7 +5,7 @@
 # SDK & Build Versions
 buildTools = "36.0.0"         # MOLLY: Dockerfile must match this version
 compileSdk = "android-36.1"   # MOLLY: Dockerfile must match this version
-targetSdk = "35"
+targetSdk = "36"           # BACKCHANNEL: Play requires 36 for new apps (Molly targets 35)
 minSdk = "27"
 ndk = "28.0.13004108"         # MOLLY: Dockerfile must match this version
 javaVersion = "21"
