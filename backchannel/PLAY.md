@@ -97,3 +97,16 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 - Phone screenshots (2 to 8, 9:16) in
   `fastlane/metadata/android/en-US/images/phoneScreenshots/`, made from a
   test account with no real names in view.
+
+## Foreground service declaration (2026-10-15)
+
+Play requires a video for every foreground-service type. One captioned demo
+covers them all; paste the same link in every box: https://youtu.be/MDOb_eol9Ro
+(unlisted). Recorded on an emulator on Six with the reviewer number; the
+source file is `~/backchannel-fgs-demo.mp4` on Six. Types and the built-in
+task picked for each: camera = background camera streaming; connected
+device = continuous data transfer (phone-to-phone transfer); data sync =
+backing up/restoring + importing/exporting; media playback; media
+projection; microphone = background audio input; phone call = VoIP;
+remote messaging = transferring text messages. Avoid "Other" (it demands a
+written reason).
