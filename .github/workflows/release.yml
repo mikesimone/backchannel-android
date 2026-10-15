@@ -209,7 +209,7 @@ jobs:
           name: bundle
           path: bundle
 
-      - name: Upload to Play internal testing
+      - name: Upload to Play closed testing
         if: "env.HAVE_PLAY == 'true'"
         run: |
           gem install fastlane --no-document --user-install
