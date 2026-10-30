@@ -558,7 +558,7 @@ public class TextSecurePreferences {
   }
 
   public static boolean isIncognitoKeyboardEnabled(Context context) {
-    return getBooleanPreference(context, INCOGNITO_KEYBOARD_PREF, true);
+    return getBooleanPreference(context, INCOGNITO_KEYBOARD_PREF, false); // BACKCHANNEL: off like Signal (less paranoid than Molly)
   }
 
   public static boolean isReadReceiptsEnabled(Context context) {
@@ -724,7 +724,7 @@ public class TextSecurePreferences {
   }
 
   public static boolean isScreenSecurityEnabled(Context context) {
-    return getBooleanPreference(context, SCREEN_SECURITY_PREF, true);
+    return getBooleanPreference(context, SCREEN_SECURITY_PREF, false); // BACKCHANNEL: off like Signal (less paranoid than Molly)
   }
 
   public static int getLastVersionCodeForMolly(Context context) {
