@@ -17,9 +17,8 @@ WHAT BACKCHANNEL ADDS
 EVERYTHING YOU EXPECT
 Private messages, groups, voice and video calls, voice notes, photos and files, reactions, polls, stickers, disappearing messages, stories, scheduled messages and more.
 
-TWO WAYS TO START
-• Register this phone number with Backchannel, as your main Signal app.
-• Or link Backchannel to the Signal app you already use, as a linked device.
+MOVING OVER FROM SIGNAL
+Make an on-device backup in Signal, then restore it in Backchannel. Your chats come with you, and Backchannel takes over from the Signal app on that phone.
 
 PRIVACY
 Backchannel collects nothing. There are no ads and no analytics. Your messages go only to the Signal network, end-to-end encrypted. Notifications use Google push when it's available, with a direct connection as the fallback.
