@@ -34,7 +34,6 @@ import org.signal.core.util.ServiceUtil;
 import org.signal.core.util.Util;
 import org.thoughtcrime.securesms.util.ViewUtil;
 
-import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -156,20 +155,14 @@ public class KeyboardAwareLinearLayout extends LinearLayoutCompat {
   }
 
   private int getViewInset() {
-    try {
-      Field attachInfoField = View.class.getDeclaredField("mAttachInfo");
-      attachInfoField.setAccessible(true);
-      Object attachInfo = attachInfoField.get(this);
-      if (attachInfo != null) {
-        Field stableInsetsField = attachInfo.getClass().getDeclaredField("mStableInsets");
-        stableInsetsField.setAccessible(true);
-        Rect insets = (Rect) stableInsetsField.get(attachInfo);
-        if (insets != null) {
-          return insets.bottom;
-        }
+    // BACKCHANNEL: public insets API instead of reflecting on View.mAttachInfo,
+    // which is blocked when targeting API 36 (lint SoonBlockedPrivateApi).
+    WindowInsets windowInsets = getRootWindowInsets();
+    if (windowInsets != null) {
+      if (Build.VERSION.SDK_INT >= 30) {
+        return windowInsets.getInsets(WindowInsets.Type.navigationBars()).bottom;
       }
-    } catch (NoSuchFieldException | IllegalAccessException e) {
-      // Do nothing
+      return windowInsets.getStableInsetBottom();
     }
     return statusBarHeight;
   }
