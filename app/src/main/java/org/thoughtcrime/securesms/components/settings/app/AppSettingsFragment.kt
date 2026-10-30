@@ -74,6 +74,7 @@ import org.thoughtcrime.securesms.compose.rememberStatusBarColorNestedScrollModi
 import org.thoughtcrime.securesms.database.model.InAppPaymentSubscriberRecord
 import org.thoughtcrime.securesms.profiles.ProfileName
 import org.thoughtcrime.securesms.recipients.Recipient
+import org.thoughtcrime.securesms.util.CommunicationActions
 import org.thoughtcrime.securesms.util.SignalE164Util
 import org.thoughtcrime.securesms.util.navigation.safeNavigate
 import org.signal.core.ui.R as CoreUiR
@@ -308,9 +309,19 @@ private fun AppSettingsContent(
           )
         }
 
-        // BACKCHANNEL: no "Donate" row. It opened Molly's Open Collective while
-        // the rebranded label read "Donate to Backchannel", which misdirects
-        // money and breaks Play's payments policy. Molly is credited in the README.
+        // BACKCHANNEL: "Donate to Backchannel" goes to Mike's Ko-fi, not Molly's
+        // Open Collective (Mike 2026-10-30). Molly is credited in the README.
+        item {
+          val context = LocalContext.current
+
+          Rows.TextRow(
+            text = stringResource(R.string.preferences__donate_to_signal),
+            icon = painterResource(R.drawable.symbol_heart_24),
+            onClick = {
+              CommunicationActions.openBrowserLink(context, "https://ko-fi.com/gcbapps")
+            },
+          )
+        }
 
         item {
           Dividers.Default()
