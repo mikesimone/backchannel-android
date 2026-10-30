@@ -110,3 +110,19 @@ backing up/restoring + importing/exporting; media playback; media
 projection; microphone = background audio input; phone call = VoIP;
 remote messaging = transferring text messages. Avoid "Other" (it demands a
 written reason).
+
+## Policy update of 2026-10-29 (Play email)
+
+Nothing in it blocks a release. What applies to Backchannel:
+- **Contacts** (`READ_CONTACTS`, `WRITE_CONTACTS`): the new "Manage Contacts"
+  policy needs a Play Console declaration once the form opens (at least 30
+  days from 2026-10-29). Answer: core function, finding which contacts use
+  Signal; numbers are hashed before they leave the phone.
+- **Location** (`ACCESS_FINE_LOCATION`): declaration mandatory from
+  2027-01-27. Answer: sending your exact location in a chat, chosen by the
+  user each time; coarse location isn't precise enough to meet someone.
+- **Trader status**: Mike declares it in Play Console (account level) from
+  November 2026.
+- Not applicable: SMS and call log (store build requests neither), local
+  network and the location button (API 37+ only; we target 36), All Files
+  Access, Accessibility, payments, crypto.
