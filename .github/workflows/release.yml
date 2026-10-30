@@ -239,7 +239,7 @@ jobs:
               --metadata_path fastlane/metadata/android \
               --skip_upload_screenshots "${{ vars.PLAY_SKIP_SCREENSHOTS || 'false' }}" 2>&1 | tee supply.log
           }
-          if ! supply "${PLAY_RELEASE_STATUS:-completed}"; then
+          if ! supply "${PLAY_RELEASE_STATUS:-draft}"; then
             grep -qi 'draft app' supply.log || exit 1
             echo "::warning::Play still treats the app as a draft; uploaded as a draft release instead."
             supply draft
