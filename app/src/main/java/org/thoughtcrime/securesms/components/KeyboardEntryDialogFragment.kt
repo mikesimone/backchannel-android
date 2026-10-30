@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.annotation.LayoutRes
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
 import org.thoughtcrime.securesms.R
 
@@ -38,6 +39,11 @@ abstract class KeyboardEntryDialogFragment(@LayoutRes contentLayoutId: Int) :
     }
 
     dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+
+    // BACKCHANNEL: on targetSdk 36 dialog windows are edge-to-edge and ignore
+    // adjustResize, so the caption box sat under the keyboard. Fit the content
+    // inside the system bars and keyboard again.
+    dialog.window?.let { WindowCompat.setDecorFitsSystemWindows(it, true) }
 
     return dialog
   }
