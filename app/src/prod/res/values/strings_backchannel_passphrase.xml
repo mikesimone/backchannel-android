@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: passphrase screen wording (Mike 2026-10-30: optional, only for the very cautious). -->
+<resources>
+  <string name="backchannel_passphrase_title">Passphrase (optional)</string>
+  <string name="backchannel_passphrase_explainer">Most people skip this. A passphrase adds a second lock on top of your phone\'s own. While Backchannel is locked, it can\'t show notifications or ring for calls.</string>
+  <string name="backchannel_passphrase_later">You can add one later in Settings &gt; Privacy.</string>
+  <string name="backchannel_passphrase_skip">Skip</string>
+  <string name="backchannel_passphrase_add">Add a passphrase anyway</string>
+</resources>

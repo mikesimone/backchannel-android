@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: Molly's passphrase screen, reworded so it's plainly optional, with Skip as the main button. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:viewBindingIgnore="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/core_ultramarine">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/blurb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:fontFamily="sans-serif-light"
+            android:gravity="center_horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="@string/backchannel_passphrase_title"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textColor="@android:color/white"
+            android:textIsSelectable="false"
+            android:textSize="@dimen/onboarding_title_size" />
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="170dp"
+                android:layout_height="170dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/circle_tintable" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="120dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center"
+                android:tint="@color/core_ultramarine"
+                app:srcCompat="@drawable/ic_lock" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/subblurb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-light"
+            android:gravity="center_horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="@string/backchannel_passphrase_explainer"
+            android:textColor="@color/core_white"
+            android:textIsSelectable="false"
+            android:textSize="18sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="sans-serif-light"
+            android:gravity="center_horizontal"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="@string/backchannel_passphrase_later"
+            android:textColor="@color/core_white"
+            android:textIsSelectable="false"
+            android:textSize="18sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/no_button"
+            style="@style/Signal.Widget.Button.Large.Primary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:text="@string/backchannel_passphrase_skip"
+            android:textColor="@color/core_ultramarine"
+            app:backgroundTint="@color/core_white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/yes_button"
+            style="@style/Signal.Widget.Button.Medium.Primary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            android:text="@string/backchannel_passphrase_add"
+            android:textColor="@color/core_white"
+            app:backgroundTint="@color/core_ultramarine_dark" />
+
+    </LinearLayout>
+</ScrollView>
