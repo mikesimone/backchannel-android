@@ -14,6 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.view.WindowCompat;
 
 import org.signal.core.util.ConfigurationUtil;
 import org.signal.core.util.ServiceUtil;
@@ -44,6 +45,13 @@ public abstract class BaseActivity extends AppCompatActivity {
     AppStartup.getInstance().onCriticalRenderEventStart();
     logEvent("onCreate()");
     super.onCreate(savedInstanceState);
+    // BACKCHANNEL: Play requires targetSdk 36, which ignores the themes'
+    // windowOptOutEdgeToEdgeEnforcement. Keep Molly's targetSdk 35 layout: content
+    // stays inside the status and navigation bars unless a screen calls
+    // enableEdgeToEdge() itself (those run later in onCreate and override this).
+    if (Build.VERSION.SDK_INT >= 35) {
+      WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+    }
     blockRecentAppsScreenshot(ScreenLockController.getAutoLock());
     AppStartup.getInstance().onCriticalRenderEventEnd();
   }

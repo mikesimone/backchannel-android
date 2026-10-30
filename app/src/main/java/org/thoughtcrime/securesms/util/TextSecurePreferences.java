@@ -616,7 +616,7 @@ public class TextSecurePreferences {
 
   @Deprecated
   public static NotificationPrivacyPreference getNotificationPrivacy(Context context) {
-    return new NotificationPrivacyPreference(getStringPreference(context, NOTIFICATION_PRIVACY_PREF, "none"));
+    return new NotificationPrivacyPreference(getStringPreference(context, NOTIFICATION_PRIVACY_PREF, "all") /* BACKCHANNEL: show name and message, like Signal (Molly: "none") */);
   }
 
   public static boolean isNewContactsNotificationEnabled(Context context) {

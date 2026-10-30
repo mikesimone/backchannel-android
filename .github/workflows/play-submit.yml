@@ -1,0 +1,35 @@
+# BACKCHANNEL: sends the newest draft release on a Play track for review.
+# Pair with the Actions variable PLAY_RELEASE_STATUS=draft when a build
+# should be checked on a phone before Google sees it.
+name: Play submit
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Track whose draft to send for review"
+        default: alpha
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Send draft for review
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Send for review
+        run: |
+          python3 -m pip install --quiet google-api-python-client==2.154.0 google-auth==2.36.0
+          printenv PLAY_JSON > "$RUNNER_TEMP/play.json"
+          trap 'rm -f "$RUNNER_TEMP/play.json"' EXIT
+          PLAY_JSON="$RUNNER_TEMP/play.json" python3 backchannel/play_submit.py "$TRACK"
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          TRACK: ${{ inputs.track }}
