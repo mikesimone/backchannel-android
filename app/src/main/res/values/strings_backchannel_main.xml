@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: strings for Backchannel-only features used from main code. -->
+<resources>
+  <string name="AttachmentKeyboard_photo_apps">Photo apps</string>
+</resources>

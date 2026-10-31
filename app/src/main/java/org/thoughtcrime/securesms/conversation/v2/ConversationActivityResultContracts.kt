@@ -53,6 +53,7 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
   private val selectLocationLauncher = fragment.registerForActivityResult(SelectLocation) { result -> callbacks.onLocationSelected(result?.place, result?.uri) }
   private val selectFileLauncher = fragment.registerForActivityResult(SelectFile) { result -> callbacks.onFileSelected(result) }
   private val cameraLauncher = fragment.registerForActivityResult(MediaCapture) { result -> callbacks.onMediaSend(result) }
+  private val photoAppsLauncher = fragment.registerForActivityResult(PhotoApps) { uris -> callbacks.onPhotoAppsSelected(uris) }
 
   fun launchContactShareEditor(uri: Uri, chatColors: ChatColors) {
     contactShareLauncher.launch(uri to chatColors)
@@ -116,6 +117,42 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
     }
 
     return false
+  }
+
+  // BACKCHANNEL: lets Google Photos, Immich or any other photo app act as the picker.
+  fun launchPhotoApps(): Boolean {
+    return try {
+      photoAppsLauncher.launch(fragment.getString(R.string.AttachmentKeyboard_photo_apps))
+      true
+    } catch (e: ActivityNotFoundException) {
+      Log.w(TAG, "No app can pick photos or videos.")
+      false
+    }
+  }
+
+  private object PhotoApps : ActivityResultContract<String, List<Uri>>() {
+    override fun createIntent(context: Context, input: String): Intent {
+      val pick = Intent(Intent.ACTION_GET_CONTENT).apply {
+        type = "image/*"
+        putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
+        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        addCategory(Intent.CATEGORY_OPENABLE)
+      }
+      return Intent.createChooser(pick, input)
+    }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): List<Uri> {
+      if (resultCode != Activity.RESULT_OK || intent == null) {
+        return emptyList()
+      }
+
+      val clip = intent.clipData
+      if (clip != null && clip.itemCount > 0) {
+        return (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }
+      }
+
+      return listOfNotNull(intent.data)
+    }
   }
 
   private object MediaSelection : ActivityResultContract<MediaSelectionInput, MediaSendActivityResult?>() {
@@ -264,5 +301,6 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
     fun onContactSelect(uri: Uri?)
     fun onLocationSelected(place: SignalPlace?, uri: Uri?)
     fun onFileSelected(uri: Uri?)
+    fun onPhotoAppsSelected(uris: List<Uri>)
   }
 }

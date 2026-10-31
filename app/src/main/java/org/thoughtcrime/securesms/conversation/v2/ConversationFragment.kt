@@ -333,7 +333,10 @@ import org.thoughtcrime.securesms.registration.ui.RegistrationActivity
 import org.thoughtcrime.securesms.revealable.ViewOnceMessageActivity
 import org.thoughtcrime.securesms.revealable.ViewOnceUtil
 import org.thoughtcrime.securesms.safety.SafetyNumberBottomSheet
+import org.thoughtcrime.securesms.sharing.v2.ResolvedShareData
 import org.thoughtcrime.securesms.sharing.v2.ShareActivity
+import org.thoughtcrime.securesms.sharing.v2.ShareRepository
+import org.thoughtcrime.securesms.sharing.v2.UnresolvedShareData
 import org.thoughtcrime.securesms.sms.MessageSender
 import org.thoughtcrime.securesms.stickers.StickerEventListener
 import org.thoughtcrime.securesms.stickers.StickerLocator
@@ -4566,6 +4569,26 @@ class ConversationFragment :
         setMedia(uri, SlideFactory.MediaType.DOCUMENT)
       }
     }
+
+    // BACKCHANNEL: photos picked in another app go through the normal media editor.
+    override fun onPhotoAppsSelected(uris: List<Uri>) {
+      val recipient = viewModel.recipientSnapshot ?: return
+      if (uris.isEmpty()) {
+        return
+      }
+
+      ShareRepository(requireContext())
+        .resolve(UnresolvedShareData.ExternalMultiShare(uris, null))
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe { resolved ->
+          if (resolved is ResolvedShareData.Media) {
+            conversationActivityResultContracts.launchMediaEditor(resolved.media, recipient.id, composeText.textTrimmed)
+          } else {
+            toast(R.string.AttachmentManager_cant_open_media_selection, Toast.LENGTH_LONG)
+          }
+        }
+        .addTo(disposables)
+    }
   }
 
   //endregion
@@ -5071,6 +5094,12 @@ class ConversationFragment :
       if (button != null) {
         when (button) {
           AttachmentKeyboardButton.GALLERY -> conversationActivityResultContracts.launchGallery(recipient.id, composeText.textTrimmed, inputPanel.quote.isPresent)
+
+          AttachmentKeyboardButton.PHOTO_APPS -> {
+            if (!conversationActivityResultContracts.launchPhotoApps()) {
+              toast(R.string.AttachmentManager_cant_open_media_selection, Toast.LENGTH_LONG)
+            }
+          }
 
           AttachmentKeyboardButton.CONTACT -> conversationActivityResultContracts.launchSelectContact()
 
