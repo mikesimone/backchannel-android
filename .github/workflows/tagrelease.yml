@@ -29,7 +29,10 @@ jobs:
         id: extract_version
         run: |
           ver=$(./gradlew -q :app:printVersion | jq -r .android.versionName)
-          echo "version=v$ver" >> $GITHUB_OUTPUT
+          # BACKCHANNEL: our tags are <molly version>-bc<revision>; a bare
+          # v<molly version> would move Molly's own tag.
+          rev=$(sed -n 's/^backchannelRevision=//p' app/gradle.properties)
+          echo "version=v$ver-bc$rev" >> $GITHUB_OUTPUT
 
       - name: Tag current commit and push
         run: |
