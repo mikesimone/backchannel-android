@@ -16,6 +16,8 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
@@ -213,6 +215,7 @@ public final class ReactWithAnyEmojiBottomSheetDialogFragment extends FixedRound
     }
 
     container.addView(tabBar);
+    keepTabRowAboveNavigationBar(tabBar.findViewById(R.id.react_with_any_emoji_tab_row));
 
     emojiPageView.addOnScrollListener(new TopAndBottomShadowHelper(requireView().findViewById(R.id.react_with_any_emoji_top_shadow),
                                                                    tabBar.findViewById(R.id.react_with_any_emoji_bottom_shadow)));
@@ -228,6 +231,26 @@ public final class ReactWithAnyEmojiBottomSheetDialogFragment extends FixedRound
     })));
 
     search.setCallbacks(new SearchCallbacks());
+  }
+
+  /**
+   * BACKCHANNEL: on targetSdk 35+ this sheet is drawn under the navigation bar, which hid the
+   * category tabs. Grow the tab row by the navigation bar height and keep the tabs above it.
+   */
+  private static void keepTabRowAboveNavigationBar(@NonNull View tabRow) {
+    final int rowHeight = tabRow.getLayoutParams().height;
+
+    ViewCompat.setOnApplyWindowInsetsListener(tabRow, (v, insets) -> {
+      int bottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+      ViewGroup.LayoutParams params = v.getLayoutParams();
+      if (params.height != rowHeight + bottom) {
+        params.height = rowHeight + bottom;
+        v.setLayoutParams(params);
+      }
+      v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), bottom);
+      return insets;
+    });
+    ViewCompat.requestApplyInsets(tabRow);
   }
 
   private void scrollTo(@NonNull String key) {
