@@ -3,6 +3,9 @@ name: Tag Commit for Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write # BACKCHANNEL: push the tag and let the called Release workflow publish
+
 jobs:
   push_tag:
     name: Push version tag
