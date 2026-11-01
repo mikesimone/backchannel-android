@@ -1,5 +1,6 @@
 package org.thoughtcrime.securesms.components.settings.app.chats
 
+import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,11 +10,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import org.signal.core.ui.compose.ComposeFragment
 import org.signal.core.ui.compose.DayNightPreviews
@@ -89,6 +92,18 @@ class ChatsSettingsFragment : ComposeFragment() {
       viewModel.setEnterKeySends(enabled)
     }
 
+    // BACKCHANNEL: one skin tone for every emoji
+    override fun onDefaultSkinToneClick(current: Int) {
+      MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.ChatsSettingsFragment__default_skin_tone)
+        .setSingleChoiceItems(skinToneLabels(requireContext()), current) { dialog, which ->
+          viewModel.setDefaultSkinTone(which)
+          dialog.dismiss()
+        }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+    }
+
     override fun onExportPlaintextChatHistoryClick() {
       viewModel.requestChatExportType()
     }
@@ -128,6 +143,7 @@ private interface ChatsSettingsCallbacks : ChatExportCallbacks {
   fun onAddOrEditFoldersClick() = Unit
   fun onUseSystemEmojiChanged(enabled: Boolean) = Unit
   fun onEnterKeySendsChanged(enabled: Boolean) = Unit
+  fun onDefaultSkinToneClick(current: Int) = Unit
   fun onExportPlaintextChatHistoryClick() = Unit
   fun onCancelInFlightExport() = Unit
 
@@ -269,6 +285,16 @@ private fun ChatsSettingsScreen(
       }
 
       item {
+        val context = LocalContext.current
+        Rows.TextRow(
+          text = stringResource(R.string.ChatsSettingsFragment__default_skin_tone),
+          label = skinToneLabels(context)[state.defaultSkinTone],
+          enabled = state.isRegisteredAndUpToDate(),
+          onClick = { callbacks.onDefaultSkinToneClick(state.defaultSkinTone) }
+        )
+      }
+
+      item {
         Rows.ToggleRow(
           text = stringResource(R.string.ChatsSettingsFragment__send_with_enter),
           enabled = state.isRegisteredAndUpToDate(),
@@ -308,4 +334,16 @@ private fun ChatsSettingsScreenPreview() {
       callbacks = ChatsSettingsCallbacks.Empty
     )
   }
+}
+
+/** BACKCHANNEL: labels for the default skin tone, in [org.thoughtcrime.securesms.components.emoji.SkinTone] order. */
+private fun skinToneLabels(context: Context): Array<String> {
+  return arrayOf(
+    "\uD83D\uDC4B " + context.getString(R.string.ChatsSettingsFragment__skin_tone_default),
+    "\uD83D\uDC4B\uD83C\uDFFB " + context.getString(R.string.ChatsSettingsFragment__skin_tone_light),
+    "\uD83D\uDC4B\uD83C\uDFFC " + context.getString(R.string.ChatsSettingsFragment__skin_tone_medium_light),
+    "\uD83D\uDC4B\uD83C\uDFFD " + context.getString(R.string.ChatsSettingsFragment__skin_tone_medium),
+    "\uD83D\uDC4B\uD83C\uDFFE " + context.getString(R.string.ChatsSettingsFragment__skin_tone_medium_dark),
+    "\uD83D\uDC4B\uD83C\uDFFF " + context.getString(R.string.ChatsSettingsFragment__skin_tone_dark)
+  )
 }

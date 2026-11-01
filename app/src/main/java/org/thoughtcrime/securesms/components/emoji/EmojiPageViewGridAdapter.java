@@ -10,6 +10,7 @@ import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 
 import org.thoughtcrime.securesms.R;
+import org.thoughtcrime.securesms.keyvalue.SignalStore;
 import org.thoughtcrime.securesms.util.adapter.mapping.LayoutFactory;
 import org.thoughtcrime.securesms.util.adapter.mapping.MappingAdapter;
 import org.thoughtcrime.securesms.util.adapter.mapping.MappingModel;
@@ -139,16 +140,18 @@ public class EmojiPageViewGridAdapter extends MappingAdapter implements PopupWin
 
     @Override
     public void bind(@NonNull EmojiModel model) {
-      final Drawable drawable = EmojiProvider.getEmojiDrawable(imageView.getContext(), model.emoji.getValue());
+      // BACKCHANNEL: show and send each emoji in the tone the user chose (or the default skin tone).
+      final String   value    = model.emoji.hasMultipleVariations() ? SignalStore.emoji().getPreferredVariation(model.emoji.getValue()) : model.emoji.getValue();
+      final Drawable drawable = EmojiProvider.getEmojiDrawable(imageView.getContext(), value);
 
-      imageView.setContentDescription(model.emoji.getValue());
+      imageView.setContentDescription(value);
       if (drawable != null) {
         imageView.setVisibility(View.VISIBLE);
         imageView.setImageDrawable(drawable);
       }
 
       itemView.setOnClickListener(v -> {
-        emojiEventListener.onEmojiSelected(model.emoji.getValue());
+        emojiEventListener.onEmojiSelected(value);
       });
 
       if (allowVariations && model.emoji.hasMultipleVariations()) {

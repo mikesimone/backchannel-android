@@ -31,6 +31,7 @@ class ChatsSettingsViewModel @JvmOverloads constructor(
       useAddressBook = SignalStore.settings.isPreferSystemContactPhotos,
       keepMutedChatsArchived = SignalStore.settings.shouldKeepMutedChatsArchived(),
       useSystemEmoji = SignalStore.settings.isPreferSystemEmoji,
+      defaultSkinTone = SignalStore.emoji.defaultSkinTone,
       enterKeySends = SignalStore.settings.isEnterKeySends,
       localBackupsEnabled = SignalStore.settings.isBackupEnabled && BackupUtil.canUserAccessBackupDirectory(AppDependencies.application),
       folderCount = 0,
@@ -93,6 +94,14 @@ class ChatsSettingsViewModel @JvmOverloads constructor(
     refreshDebouncer.publish { ConversationUtil.refreshRecipientShortcuts() }
     SignalStore.settings.isPreferSystemContactPhotos = enabled
     repository.syncPreferSystemContactPhotos()
+  }
+
+  // BACKCHANNEL: one skin tone for every emoji
+  fun setDefaultSkinTone(tone: Int) {
+    store.update { it.copy(defaultSkinTone = tone) }
+    viewModelScope.launch(Dispatchers.IO) {
+      SignalStore.emoji.setDefaultSkinTone(tone)
+    }
   }
 
   fun setKeepMutedChatsArchived(enabled: Boolean) {

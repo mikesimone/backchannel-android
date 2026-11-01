@@ -4,8 +4,10 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 
 import org.thoughtcrime.securesms.components.emoji.EmojiUtil;
+import org.thoughtcrime.securesms.components.emoji.SkinTone;
 import org.signal.core.util.Util;
 
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ public class EmojiValues extends SignalStoreValues {
   private static final String SEARCH_LANGUAGE      = PREFIX + "search_language";
   private static final String LAST_SEARCH_CHECK    = PREFIX + "last_search_check";
   private static final String JUMBO_EMOJI_DOWNLOAD = PREFIX + "jumbo_emoji_v";
+  private static final String DEFAULT_SKIN_TONE    = "backchannel.emoji.default_skin_tone"; // BACKCHANNEL
 
   public static final String NO_LANGUAGE = "NO_LANGUAGE";
 
@@ -69,7 +72,28 @@ public class EmojiValues extends SignalStoreValues {
   public @NonNull String getPreferredVariation(@NonNull String emoji) {
     String canonical = EmojiUtil.getCanonicalRepresentation(emoji);
 
-    return getString(PREFIX + canonical, emoji);
+    // BACKCHANNEL: with no choice for this emoji, use the default skin tone from Settings > Chats.
+    String preferred = getString(PREFIX + canonical, null);
+    if (preferred != null) {
+      return preferred;
+    }
+
+    return emoji.equals(canonical) ? SkinTone.forEmoji(emoji, getDefaultSkinTone()) : emoji;
+  }
+
+  /** BACKCHANNEL: see {@link SkinTone}. */
+  public int getDefaultSkinTone() {
+    return getInteger(DEFAULT_SKIN_TONE, SkinTone.NONE);
+  }
+
+  /** BACKCHANNEL: sets the default skin tone and drops every per-emoji tone choice, so the new default applies everywhere. */
+  @WorkerThread
+  public void setDefaultSkinTone(int tone) {
+    KeyValueStore.Writer writer = getStore().beginWrite().putInteger(DEFAULT_SKIN_TONE, tone);
+    for (String canonical : SkinTone.tonedEmoji()) {
+      writer.remove(PREFIX + canonical);
+    }
+    writer.apply();
   }
 
   public void removePreferredVariation(@NonNull String emoji) {

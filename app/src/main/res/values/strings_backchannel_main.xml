@@ -2,4 +2,11 @@
 <!-- BACKCHANNEL: strings for Backchannel-only features used from main code. -->
 <resources>
   <string name="AttachmentKeyboard_photo_apps">Photo apps</string>
+  <string name="ChatsSettingsFragment__default_skin_tone">Default skin tone</string>
+  <string name="ChatsSettingsFragment__skin_tone_default">Default</string>
+  <string name="ChatsSettingsFragment__skin_tone_light">Light</string>
+  <string name="ChatsSettingsFragment__skin_tone_medium_light">Medium-light</string>
+  <string name="ChatsSettingsFragment__skin_tone_medium">Medium</string>
+  <string name="ChatsSettingsFragment__skin_tone_medium_dark">Medium-dark</string>
+  <string name="ChatsSettingsFragment__skin_tone_dark">Dark</string>
 </resources>
