@@ -337,6 +337,8 @@ public class ComposeText extends EmojiEditText {
     addTextChangedListener(new ComposeTextStyleWatcher());
     // BACKCHANNEL: markdown shortcuts (P9)
     addTextChangedListener(new net.mikesimone.backchannel.Markdown.Watcher(this));
+    // BACKCHANNEL: typed emoticons become emoji
+    addTextChangedListener(new net.mikesimone.backchannel.Emoticons.Watcher(this));
 
     setCustomSelectionActionModeCallback(new ActionMode.Callback() {
       @Override
