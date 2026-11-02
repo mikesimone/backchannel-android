@@ -364,6 +364,7 @@ import org.thoughtcrime.securesms.util.PlayStoreUtil
 import org.thoughtcrime.securesms.util.RemoteConfig
 import org.thoughtcrime.securesms.util.SignalLocalMetrics
 import org.thoughtcrime.securesms.util.TextSecurePreferences
+import org.thoughtcrime.securesms.util.VibrateUtil
 import org.thoughtcrime.securesms.util.ViewUtil
 import org.thoughtcrime.securesms.util.atMidnight
 import org.thoughtcrime.securesms.util.atUTC
@@ -2256,6 +2257,29 @@ class ConversationFragment :
     sendMessage()
   }
 
+  // BACKCHANNEL: double-tap reacts with the first of your reactions; double-tap again removes it.
+  private fun onMessageDoubleTapped(position: Int) {
+    if (isActionModeStarted()) {
+      return
+    }
+
+    val messageRecord = adapter.getConversationMessage(position)?.messageRecord ?: return
+    val recipient = viewModel.recipientSnapshot ?: return
+
+    if (messageRecord.isInMemoryMessageRecord ||
+      !messageRecord.isValidReactionTarget() ||
+      recipient.isBlocked ||
+      viewModel.hasMessageRequestState ||
+      (recipient.isGroup && !recipient.isActiveGroup)
+    ) {
+      return
+    }
+
+    val emoji = SignalStore.emoji.getPreferredVariation(SignalStore.emoji.reactions.first())
+    VibrateUtil.vibrateTick(requireContext())
+    disposables += viewModel.updateReaction(messageRecord, emoji).subscribe()
+  }
+
   private fun getVoiceNoteMediaController() = requireListener<VoiceNoteMediaControllerOwner>().voiceNoteMediaController
 
   private fun initializeConversationThreadUi() {
@@ -2264,6 +2288,8 @@ class ConversationFragment :
     binding.conversationItemRecycler.layoutManager = layoutManager
     scrollListener = ScrollListener()
     binding.conversationItemRecycler.addOnScrollListener(scrollListener!!)
+    // BACKCHANNEL: double-tap a message to react
+    binding.conversationItemRecycler.addOnItemTouchListener(net.mikesimone.backchannel.DoubleTapToReact(binding.conversationItemRecycler, ::onMessageDoubleTapped))
 
     adapter = ConversationAdapterV2(
       lifecycleOwner = viewLifecycleOwner,
