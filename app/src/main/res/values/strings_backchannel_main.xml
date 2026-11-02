@@ -9,4 +9,6 @@
   <string name="ChatsSettingsFragment__skin_tone_medium">Medium</string>
   <string name="ChatsSettingsFragment__skin_tone_medium_dark">Medium-dark</string>
   <string name="ChatsSettingsFragment__skin_tone_dark">Dark</string>
+  <string name="ChatsSettingsFragment__open_signal_links">Open Signal links in Backchannel</string>
+  <string name="ChatsSettingsFragment__open_signal_links_summary">Tap \"Add link\" and select every link, so signal.me and group invite links open here instead of the browser</string>
 </resources>

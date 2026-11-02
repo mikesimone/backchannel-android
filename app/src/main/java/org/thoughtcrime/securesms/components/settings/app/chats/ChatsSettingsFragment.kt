@@ -1,7 +1,10 @@
 package org.thoughtcrime.securesms.components.settings.app.chats
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.SnackbarHostState
@@ -92,6 +95,13 @@ class ChatsSettingsFragment : ComposeFragment() {
       viewModel.setEnterKeySends(enabled)
     }
 
+    // BACKCHANNEL: system "Open by default" page, where signal.me / signal.group links can be allowed
+    override fun onOpenSignalLinksClick() {
+      if (Build.VERSION.SDK_INT >= 31) {
+        startActivity(Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS, Uri.parse("package:" + requireContext().packageName)))
+      }
+    }
+
     // BACKCHANNEL: one skin tone for every emoji
     override fun onDefaultSkinToneClick(current: Int) {
       MaterialAlertDialogBuilder(requireContext())
@@ -144,6 +154,7 @@ private interface ChatsSettingsCallbacks : ChatExportCallbacks {
   fun onUseSystemEmojiChanged(enabled: Boolean) = Unit
   fun onEnterKeySendsChanged(enabled: Boolean) = Unit
   fun onDefaultSkinToneClick(current: Int) = Unit
+  fun onOpenSignalLinksClick() = Unit
   fun onExportPlaintextChatHistoryClick() = Unit
   fun onCancelInFlightExport() = Unit
 
@@ -208,6 +219,18 @@ private fun ChatsSettingsScreen(
           checked = state.keepMutedChatsArchived,
           onCheckChanged = callbacks::onKeepMutedChatsArchivedChanged
         )
+      }
+
+      // BACKCHANNEL: only Signal can verify signal.me / signal.group links for an app, so Android 12+
+      // opens them in the browser until the user allows them for Backchannel in system settings.
+      if (Build.VERSION.SDK_INT >= 31) {
+        item {
+          Rows.TextRow(
+            text = stringResource(R.string.ChatsSettingsFragment__open_signal_links),
+            label = stringResource(R.string.ChatsSettingsFragment__open_signal_links_summary),
+            onClick = callbacks::onOpenSignalLinksClick
+          )
+        }
       }
 
       item {
