@@ -1,1 +1,1 @@
-Messages arrive right away: the kept-open connection is now the default, since Google push was slow.
+Google push is the default again, now through Backchannel's own registration. New: pick photos from Google Photos and other photo apps, one default emoji skin tone in Settings > Chats, a shortcut to open Signal links in Backchannel, and the emoji reaction tabs no longer sit under the navigation bar.

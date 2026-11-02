@@ -528,9 +528,10 @@ public final class SettingsValues extends SignalStoreValues {
           getString(MOLLY_NOTIFICATION_METHOD, NotificationDeliveryMethod.FCM.serialize())
       );
     } else {
-      // BACKCHANNEL: WebSocket until we have our own Google push registration;
-      // Molly's FCM setup belongs to Molly's app, so FCM is slow here (Mike 2026-10-30).
-      method = NotificationDeliveryMethod.WEBSOCKET;
+      // BACKCHANNEL: FCM through our own Firebase project (backchannel-9c342), confirmed fast by Mike 2026-11-02.
+      boolean fcmEnabled = SignalStore.account().isFcmEnabled();
+      method = fcmEnabled ? NotificationDeliveryMethod.FCM
+                          : NotificationDeliveryMethod.WEBSOCKET;
     }
     return method;
   }
