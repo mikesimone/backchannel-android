@@ -9,6 +9,8 @@ on:
       - main
     paths:
       - "fastlane/metadata/**"
+      # Release notes ship with the next build; editing them alone shouldn't send a listing to review.
+      - "!fastlane/metadata/android/*/changelogs/**"
 
 permissions:
   contents: read
