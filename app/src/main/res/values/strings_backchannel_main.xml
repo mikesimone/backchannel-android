@@ -11,4 +11,9 @@
   <string name="ChatsSettingsFragment__skin_tone_dark">Dark</string>
   <string name="ChatsSettingsFragment__open_signal_links">Open Signal links in Backchannel</string>
   <string name="ChatsSettingsFragment__open_signal_links_summary">Tap \"Add link\" and select every link, so signal.me and group invite links open here instead of the browser</string>
+  <string name="ChatLock__lock_chat">Lock this chat</string>
+  <string name="ChatLock__lock_chat_summary">Open it with your fingerprint or screen lock. Its messages are hidden in the chat list and notifications.</string>
+  <string name="ChatLock__unlock_chat">Unlock chat</string>
+  <string name="ChatLock__needs_screen_lock">Set up a fingerprint or screen lock on your phone first</string>
+  <string name="ChatLock__locked_chat">Locked chat</string>
 </resources>

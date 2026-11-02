@@ -108,6 +108,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.mikesimone.backchannel.ChatLock
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -665,6 +666,10 @@ class ConversationFragment :
 
   override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
     viewModel.resetBackPressedState()
+    // BACKCHANNEL: a locked chat stays hidden until it is unlocked (see onResume)
+    if (ChatLock.needsUnlock(requireContext(), args.recipientId)) {
+      view.visibility = View.INVISIBLE
+    }
     binding.toolbar.isBackInvokedCallbackEnabled = false
     binding.root.setUseWindowTypes(args.conversationScreenType == ConversationScreenType.NORMAL && !resources.isSplitPane())
     if (args.conversationScreenType == ConversationScreenType.BUBBLE) {
@@ -812,6 +817,9 @@ class ConversationFragment :
     super.onResume()
 
     EventBus.getDefault().register(this)
+
+    // BACKCHANNEL: locked chats ask for fingerprint or screen lock
+    requireChatUnlock()
 
     groupCallViewModel.peekGroupCall()
 
@@ -2255,6 +2263,38 @@ class ConversationFragment :
     }
 
     sendMessage()
+  }
+
+  private var chatUnlockShowing = false
+
+  // BACKCHANNEL: hide a locked chat and ask for fingerprint or screen lock; leave the chat if cancelled.
+  private fun requireChatUnlock() {
+    if (!ChatLock.needsUnlock(requireContext(), args.recipientId)) {
+      view?.visibility = View.VISIBLE
+      return
+    }
+
+    view?.visibility = View.INVISIBLE
+    if (chatUnlockShowing) {
+      return
+    }
+
+    chatUnlockShowing = true
+    ChatLock.authenticate(
+      fragment = this,
+      title = getString(R.string.ChatLock__unlock_chat),
+      onSuccess = {
+        chatUnlockShowing = false
+        ChatLock.markUnlocked(args.recipientId)
+        view?.visibility = View.VISIBLE
+      },
+      onCancel = {
+        chatUnlockShowing = false
+        if (isAdded) {
+          requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
+      }
+    )
   }
 
   // BACKCHANNEL: double-tap reacts with the first of your reactions; double-tap again removes it.

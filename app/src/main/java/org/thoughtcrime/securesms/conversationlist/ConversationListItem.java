@@ -604,6 +604,11 @@ public final class ConversationListItem extends ConstraintLayout implements Bind
   {
     int defaultTint = ThemeUtil.getThemedColor(context, R.attr.signal_text_secondary);
 
+    // BACKCHANNEL: locked chats don't show their last message
+    if (net.mikesimone.backchannel.ChatLock.isLocked(context, thread.getRecipient().getId())) {
+      return emphasisAdded(context, context.getString(R.string.ChatLock__locked_chat), Glyph.LOCK, defaultTint);
+    }
+
     if (!thread.isMessageRequestAccepted()) {
       if (thread.isRecipientHidden()) {
         return emphasisAdded(context, context.getString(R.string.ThreadRecord_hidden_recipient), defaultTint);

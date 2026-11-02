@@ -29,6 +29,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import kotlinx.coroutines.launch
+import net.mikesimone.backchannel.ChatLock
 import org.signal.core.ui.isSplitPane
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.ui.util.ThemeUtil
@@ -289,7 +290,10 @@ class ConversationSettingsFragment :
     }
   }
 
+  private var settingsAdapter: MappingAdapter? = null // BACKCHANNEL: redraw after unlocking a chat
+
   override fun bindAdapter(adapter: MappingAdapter) {
+    settingsAdapter = adapter
     nicknameLauncher = registerForActivityResult(NicknameActivity.Contract()) {
       // Intentionally left blank
     }
@@ -354,6 +358,31 @@ class ConversationSettingsFragment :
         is ConversationSettingsEvent.ShowMembersAdded -> showMembersAdded(event)
       }
     }
+  }
+
+  // BACKCHANNEL: locking needs a phone screen lock; unlocking needs the fingerprint or screen lock.
+  private fun onChatLockToggled(state: ConversationSettingsState, lock: Boolean): Boolean {
+    val context = requireContext()
+    if (!ChatLock.canAuthenticate(context)) {
+      Toast.makeText(context, R.string.ChatLock__needs_screen_lock, Toast.LENGTH_LONG).show()
+      return false
+    }
+
+    if (lock) {
+      ChatLock.setLocked(context, state.recipient.id, true)
+      return true
+    }
+
+    ChatLock.authenticate(
+      fragment = this,
+      title = getString(R.string.ChatLock__unlock_chat),
+      onSuccess = {
+        ChatLock.setLocked(context, state.recipient.id, false)
+        viewModel.state.value?.let { current -> settingsAdapter?.submitList(getConfiguration(current).toMappingModelList()) }
+      },
+      onCancel = {}
+    )
+    return false
   }
 
   private fun getConfiguration(state: ConversationSettingsState): DSLConfiguration {
@@ -632,6 +661,17 @@ class ConversationSettingsFragment :
 
             navController.safeNavigate(action)
           }
+        )
+      }
+
+      // BACKCHANNEL: lock this chat behind fingerprint or screen lock
+      if (!state.recipient.isReleaseNotes && !state.recipient.isSelf) {
+        switchPref(
+          title = DSLSettingsText.from(R.string.ChatLock__lock_chat),
+          summary = DSLSettingsText.from(R.string.ChatLock__lock_chat_summary),
+          icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_lock_24),
+          isChecked = ChatLock.isLocked(requireContext(), state.recipient.id),
+          onToggle = { lock -> onChatLockToggled(state, lock) }
         )
       }
 

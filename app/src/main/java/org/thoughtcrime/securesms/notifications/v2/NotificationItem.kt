@@ -8,6 +8,7 @@ import android.text.SpannableStringBuilder
 import android.text.TextUtils
 import androidx.annotation.StringRes
 import androidx.core.graphics.drawable.IconCompat
+import net.mikesimone.backchannel.ChatLock
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.util.Util
 import org.signal.core.util.logging.Log
@@ -139,7 +140,8 @@ sealed class NotificationItem(val threadRecipient: Recipient, protected val reco
   }
 
   fun getPrimaryText(context: Context): CharSequence {
-    return if (SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage) {
+    // BACKCHANNEL: locked chats never show message text in notifications
+    return if (SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !ChatLock.isLocked(context, threadRecipient.id)) {
       if (RecipientUtil.isMessageRequestAccepted(thread.threadId)) {
         getPrimaryTextActual(context)
       } else {
@@ -281,7 +283,7 @@ class MessageNotification(threadRecipient: Recipient, record: MessageRecord) : N
   }
 
   override fun getThumbnailInfo(context: Context): ThumbnailInfo {
-    return if (SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !KeyCachingService.isLocked()) {
+    return if (SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !KeyCachingService.isLocked() && !ChatLock.isLocked(context, threadRecipient.id)) {
       if (thumbnailInfo.needsShrinking) {
         thumbnailInfo = NotificationThumbnails.get(context, this)
       }
