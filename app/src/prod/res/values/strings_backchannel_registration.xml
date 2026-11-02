@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: registration screens where upstream says "Signal" but means this app.
+     Hand-written (rebrand_strings.py only rewrites "Molly"). Strings that mean the Signal
+     service or account are left alone. -->
+<resources>
+  <string name="GrantPermissionsFragment__to_help_you_message_people_you_know">To help you message people you know, Backchannel will request these permissions. </string>
+  <string name="AllowNotificationsScreen__signal_would_like_to_request_the_notification_permission">Backchannel would like to request the notification permission. This allows your device to display alerts when new messages arrive.</string>
+  <string name="DeviceTransferSetup__location_permission_required">Backchannel needs the location permission to discover and connect with your old device.</string>
+  <string name="DeviceTransferSetup__location_services_required">Backchannel needs location services enabled to discover and connect with your old device.</string>
+  <string name="DeviceTransferSetup__wifi_required">Backchannel needs Wi-Fi turned on to discover and connect with your old device.</string>
+  <string name="RemoteRestoreScreen__update_latest">This version of Backchannel can\'t restore your backup. Update to the latest version and try again.</string>
+  <string name="RemoteRestoreScreen__update_signal">Update Backchannel</string>
+</resources>
