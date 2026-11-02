@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: starred messages are a regular feature here, not Labs. -->
+<resources>
+  <string name="conversation_selection__menu_star" translatable="false">Star</string>
+  <string name="conversation_selection__menu_unstar" translatable="false">Unstar</string>
+  <string name="text_secure_normal__starred_messages" translatable="false">Starred messages</string>
+</resources>

@@ -25,7 +25,8 @@ class LabsValues internal constructor(store: KeyValueStore) : SignalStoreValues(
 
   var betterSearch by booleanValue(BETTER_SEARCH, true).falseForExternalUsers()
 
-  var starredMessages by booleanValue(STARRED_MESSAGES, true).falseForExternalUsers()
+  // BACKCHANNEL: starred messages on for everyone (Signal keeps them internal-only)
+  var starredMessages by booleanValue(STARRED_MESSAGES, true)
 
   // BACKCHANNEL: sticker replies on for everyone (Signal keeps them internal-only)
   var stickerReplies by booleanValue(STICKER_REPLIES, true)
