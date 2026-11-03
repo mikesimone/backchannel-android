@@ -1223,7 +1223,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
         bodyText.setMaxLines(Integer.MAX_VALUE);
       }
 
-      bodyText.setTextAsync(StringUtil.trim(styledText));
+      // BACKCHANNEL: wrapped list items line up under their text (F42 parity)
+      bodyText.setTextAsync(net.mikesimone.backchannel.ListIndent.apply(StringUtil.trim(styledText), bodyText.getPaint()));
       bodyText.setVisibility(View.VISIBLE);
 
       if (conversationMessage.getBottomButton() != null) {
