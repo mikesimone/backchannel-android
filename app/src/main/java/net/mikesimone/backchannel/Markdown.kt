@@ -217,7 +217,7 @@ object Markdown {
   private val FENCE = Regex("^\\s*```.*$")
   private val HEADING = Regex("^#{1,6}\\s+(.*)$")
   private val RULE_LINE = Regex("^\\s*(?:-{3,}|\\*{3,}|_{3,})\\s*$")
-  private val BULLET_LINE = Regex("^([ \\t\\u2003]*)[-*+•◦▪]\\s+(\\[[ xX]\\]\\s+)?")
+  private val BULLET_LINE = Regex("^([ \\t\\u2003]*)[*•◦▪]\\s+(\\[[ xX]\\]\\s+)?") // Mike: * is the bullet, not -
   private val NUMBER_LINE = Regex("^([ \\t\\u2003]*)(\\d{1,3}[.)])\\s+")
   private val QUOTE_LINE = Regex("^>(?: |$)")
   private val LEAD = Regex("^[ \\t\\u2003]+")
@@ -347,11 +347,11 @@ object Markdown {
     return end + 1
   }
 
-  /** Typing "- " or "* " at the start of a line makes a bullet right away. */
+  /** Typing "* " at the start of a line makes a bullet right away. */
   private fun bulletTyped(text: Editable, caret: Int): Int {
     val lineStart = text.lastIndexOf('\n', caret - 2) + 1
     val before = text.subSequence(lineStart, caret - 1).toString()
-    val m = Regex("^([ \\t\\u2003]*)[-*+]$").matchEntire(before) ?: return -1
+    val m = Regex("^([ \\t\\u2003]*)\\*$").matchEntire(before) ?: return -1
     val lvl = level(m.groupValues[1])
     val prefix = INDENT.repeat(lvl) + BULLETS[lvl % BULLETS.size] + " "
     edit(text) { text.replace(lineStart, caret, prefix) }

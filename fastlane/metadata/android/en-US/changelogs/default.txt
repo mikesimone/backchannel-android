@@ -1,1 +1,1 @@
-New: full markdown. Type - item, 1. item, # Title, > quote or ``` code and it becomes bullets, indents, bold headings, quotes and monospace that every Signal app shows. Plus a What's New screen after every update.
+New: full markdown. Type * item, 1. item, # Title, > quote or ``` code and it becomes bullets, indents, bold headings, quotes and monospace that every Signal app shows. Plus a What's New screen after every update.

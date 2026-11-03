@@ -22,12 +22,12 @@ class MarkdownBlocksTest {
 
   @Test
   fun bulletsAndNesting() {
-    assertEquals("• one\n$em◦ two\n$em$em▪ three", blocks("- one\n  * two\n    + three"))
+    assertEquals("• one\n$em◦ two\n$em$em▪ three", blocks("* one\n  * two\n    * three"))
   }
 
   @Test
   fun tasks() {
-    assertEquals("• ☐ milk\n• ☑ eggs", blocks("- [ ] milk\n- [x] eggs"))
+    assertEquals("• ☐ milk\n• ☑ eggs", blocks("* [ ] milk\n* [x] eggs"))
   }
 
   @Test
@@ -48,6 +48,11 @@ class MarkdownBlocksTest {
   @Test
   fun inlineExtras() {
     assertEquals("a bold b and site (https://x.org)", blocks("a **bold** b and [site](https://x.org)"))
+  }
+
+  @Test
+  fun dashIsNotABullet() {
+    assertEquals("- signed, me", blocks("- signed, me"))
   }
 
   @Test
