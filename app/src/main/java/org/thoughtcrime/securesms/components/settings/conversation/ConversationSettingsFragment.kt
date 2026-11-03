@@ -7,6 +7,7 @@ import android.content.Intent
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -15,6 +16,8 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnPreDraw
@@ -30,12 +33,15 @@ import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import kotlinx.coroutines.launch
 import net.mikesimone.backchannel.ChatLock
+import net.mikesimone.backchannel.ContactOverrides
 import org.signal.core.ui.isSplitPane
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.ui.util.ThemeUtil
 import org.signal.core.util.DimensionUnit
 import org.signal.core.util.Result
+import org.signal.core.util.ThreadUtil
 import org.signal.core.util.concurrent.LifecycleDisposable
+import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.concurrent.addTo
 import org.signal.core.util.getParcelableArrayListExtraCompat
 import org.signal.core.util.orNull
@@ -291,12 +297,16 @@ class ConversationSettingsFragment :
   }
 
   private var settingsAdapter: MappingAdapter? = null // BACKCHANNEL: redraw after unlocking a chat
+  private lateinit var pickContactLauncher: ActivityResultLauncher<Void?> // BACKCHANNEL: link to phone contact
+  private lateinit var pickPhotoLauncher: ActivityResultLauncher<PickVisualMediaRequest> // BACKCHANNEL: custom contact photo
 
   override fun bindAdapter(adapter: MappingAdapter) {
     settingsAdapter = adapter
     nicknameLauncher = registerForActivityResult(NicknameActivity.Contract()) {
       // Intentionally left blank
     }
+    pickContactLauncher = registerForActivityResult(ActivityResultContracts.PickContact()) { uri -> if (uri != null) onContactPicked(uri) }
+    pickPhotoLauncher = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) onContactPhotoPicked(uri) }
 
     val args = ConversationSettingsFragmentArgs.fromBundle(requireArguments())
 
@@ -383,6 +393,65 @@ class ConversationSettingsFragment :
       onCancel = {}
     )
     return false
+  }
+
+  // BACKCHANNEL: link a person to a phone contact by hand, and set your own photo for them.
+  private fun runContactOverride(failMessage: Int, work: (Context) -> Boolean) {
+    val context = requireContext().applicationContext
+    SignalExecutors.BOUNDED.execute {
+      val ok = work(context)
+      ThreadUtil.runOnMain {
+        if (!ok) Toast.makeText(context, failMessage, Toast.LENGTH_LONG).show()
+        if (isAdded) viewModel.state.value?.let { current -> settingsAdapter?.submitList(getConfiguration(current).toMappingModelList()) }
+      }
+    }
+  }
+
+  private fun onContactPicked(contactUri: Uri) {
+    val id = viewModel.state.value?.recipient?.id ?: return
+    runContactOverride(R.string.ContactOverrides__couldnt_link) { ContactOverrides.link(it, id, contactUri) }
+  }
+
+  private fun onContactPhotoPicked(imageUri: Uri) {
+    val id = viewModel.state.value?.recipient?.id ?: return
+    runContactOverride(R.string.ContactOverrides__couldnt_set_photo) { ContactOverrides.setCustomPhoto(it, id, imageUri) }
+  }
+
+  private fun onLinkContactClicked(state: ConversationSettingsState) {
+    if (!ContactOverrides.isLinked(state.recipient.id)) {
+      pickContactLauncher.launch(null)
+      return
+    }
+    MaterialAlertDialogBuilder(requireContext())
+      .setTitle(R.string.ContactOverrides__link_contact)
+      .setItems(arrayOf(getString(R.string.ContactOverrides__link_different), getString(R.string.ContactOverrides__unlink))) { _, which ->
+        if (which == 0) {
+          pickContactLauncher.launch(null)
+        } else {
+          val id = state.recipient.id
+          runContactOverride(R.string.ContactOverrides__couldnt_link) { ContactOverrides.unlink(it, id); true }
+        }
+      }
+      .show()
+  }
+
+  private fun onContactPhotoClicked(state: ConversationSettingsState) {
+    val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+    if (!ContactOverrides.hasCustomPhoto(state.recipient.id)) {
+      pickPhotoLauncher.launch(request)
+      return
+    }
+    MaterialAlertDialogBuilder(requireContext())
+      .setTitle(R.string.ContactOverrides__contact_photo)
+      .setItems(arrayOf(getString(R.string.ContactOverrides__change_photo), getString(R.string.ContactOverrides__remove_photo))) { _, which ->
+        if (which == 0) {
+          pickPhotoLauncher.launch(request)
+        } else {
+          val id = state.recipient.id
+          runContactOverride(R.string.ContactOverrides__couldnt_set_photo) { ContactOverrides.clearCustomPhoto(it, id); true }
+        }
+      }
+      .show()
   }
 
   private fun getConfiguration(state: ConversationSettingsState): DSLConfiguration {
@@ -630,6 +699,26 @@ class ConversationSettingsFragment :
               )
             )
           }
+        )
+
+        // BACKCHANNEL: hand-linked phone contact and your own photo for this person
+        val linkedName = ContactOverrides.linkedName(state.recipient.id)
+        clickPref(
+          title = DSLSettingsText.from(R.string.ContactOverrides__link_contact),
+          summary = if (ContactOverrides.isLinked(state.recipient.id)) {
+            DSLSettingsText.from(getString(R.string.ContactOverrides__linked_to, linkedName ?: getString(R.string.ContactOverrides__a_contact)))
+          } else {
+            DSLSettingsText.from(R.string.ContactOverrides__link_contact_summary)
+          },
+          icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_person_circle_24),
+          onClick = { onLinkContactClicked(state) }
+        )
+
+        clickPref(
+          title = DSLSettingsText.from(R.string.ContactOverrides__contact_photo),
+          summary = DSLSettingsText.from(R.string.ContactOverrides__contact_photo_summary),
+          icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_camera_24),
+          onClick = { onContactPhotoClicked(state) }
         )
       }
 

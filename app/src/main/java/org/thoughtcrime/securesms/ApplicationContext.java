@@ -274,6 +274,7 @@ public class ApplicationContext extends Application implements AppForegroundObse
               .addPostRender(() -> ActiveCallManager.clearNotifications(this))
               .addPostRender(RestoreOptimizedMediaJob::enqueueIfNecessary)
               .addPostRender(() -> AppDependencies.getPinnedMessageManager().scheduleIfNecessary())
+              .addPostRender(() -> SignalExecutors.BOUNDED.execute(() -> net.mikesimone.backchannel.ContactOverrides.refreshAll(this))) // BACKCHANNEL
               .execute();
 
     Log.d(TAG, "onCreateUnlock() took " + (System.currentTimeMillis() - startTime) + " ms");

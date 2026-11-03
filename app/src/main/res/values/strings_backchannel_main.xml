@@ -16,4 +16,16 @@
   <string name="ChatLock__unlock_chat">Unlock chat</string>
   <string name="ChatLock__needs_screen_lock">Set up a fingerprint or screen lock on your phone first</string>
   <string name="ChatLock__locked_chat">Locked chat</string>
+  <string name="ContactOverrides__link_contact">Link to phone contact</string>
+  <string name="ContactOverrides__link_contact_summary">Use a phone contact\'s name and photo, even if they hide their number. Stays linked.</string>
+  <string name="ContactOverrides__linked_to">Linked to %1$s</string>
+  <string name="ContactOverrides__a_contact">a contact</string>
+  <string name="ContactOverrides__link_different">Link a different contact</string>
+  <string name="ContactOverrides__unlink">Unlink</string>
+  <string name="ContactOverrides__couldnt_link">Couldn\'t read that contact</string>
+  <string name="ContactOverrides__contact_photo">Contact photo</string>
+  <string name="ContactOverrides__contact_photo_summary">Pick your own photo for this person. Only you see it.</string>
+  <string name="ContactOverrides__change_photo">Change photo</string>
+  <string name="ContactOverrides__remove_photo">Remove photo</string>
+  <string name="ContactOverrides__couldnt_set_photo">Couldn\'t use that photo</string>
 </resources>

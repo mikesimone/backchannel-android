@@ -8,6 +8,7 @@ import androidx.core.text.buildSpannedString
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.collections.immutable.toImmutableList
+import net.mikesimone.backchannel.ContactOverrides
 import org.signal.core.models.ServiceId
 import org.signal.core.models.ServiceId.ACI
 import org.signal.core.models.ServiceId.PNI
@@ -256,12 +257,20 @@ class Recipient(
       null
     } else if (groupIdValue != null && groupAvatarId.isPresent) {
       GroupRecordContactPhoto(groupIdValue, groupAvatarId.get())
+    } else if (isIndividual && ContactOverrides.customPhoto(id) != null) {
+      // BACKCHANNEL: your own photo for this person always wins
+      ContactOverrides.customPhoto(id)
     } else if (systemContactPhoto != null && SignalStore.settings.isPreferSystemContactPhotos) {
       SystemContactPhoto(id, systemContactPhoto, 0)
+    } else if (isIndividual && systemContactPhoto == null && SignalStore.settings.isPreferSystemContactPhotos && ContactOverrides.linkedPhoto(id) != null) {
+      // BACKCHANNEL: photo from a hand-linked phone contact, treated like a matched contact's photo
+      ContactOverrides.linkedPhoto(id)
     } else if (profileAvatar != null && profileAvatarFileDetails.hasFile()) {
       ProfileContactPhoto(this)
     } else if (systemContactPhoto != null) {
       SystemContactPhoto(id, systemContactPhoto, 0)
+    } else if (isIndividual) {
+      ContactOverrides.linkedPhoto(id) // BACKCHANNEL
     } else {
       null
     }
@@ -540,6 +549,7 @@ class Recipient(
     return getGroupName(context).isNotNullOrBlank() ||
       nickname.toString().isNotNullOrBlank() ||
       systemContactName.isNotNullOrBlank() ||
+      (isIndividual && ContactOverrides.linkedName(id).isNotNullOrBlank()) || // BACKCHANNEL
       profileName.toString().isNotNullOrBlank()
   }
 
@@ -592,6 +602,11 @@ class Recipient(
       name = systemContactName
     }
 
+    // BACKCHANNEL: name from a hand-linked phone contact (survives a hidden phone number)
+    if (name.isBlank() && isIndividual) {
+      name = ContactOverrides.linkedName(id) ?: ""
+    }
+
     if (name.isBlank()) {
       name = profileName.toString()
     }
@@ -622,6 +637,10 @@ class Recipient(
       name = BidiUtil.isolateBidi(name)
     }
 
+    if (name.isBlank() && isIndividual && !isSelf) {
+      name = BidiUtil.isolateBidi(ContactOverrides.linkedName(id)) // BACKCHANNEL
+    }
+
     if (name.isBlank()) {
       name = if (isSelf) getGroupName(context) else profileName.toString()
       name = BidiUtil.isolateBidi(name)
@@ -650,6 +669,7 @@ class Recipient(
       nickname.toString(),
       systemProfileName.givenName,
       systemProfileName.toString(),
+      if (isIndividual && systemContactName.isNullOrBlank()) ContactOverrides.linkedName(id) else null, // BACKCHANNEL
       profileName.givenName,
       profileName.toString(),
       username.orElse(null),
@@ -727,6 +747,8 @@ class Recipient(
       FallbackAvatar.forTextOrDefault(nickname.toString(), avatarColor)
     } else if (systemContactName.isNotNullOrBlank()) {
       FallbackAvatar.forTextOrDefault(systemContactName, avatarColor)
+    } else if (isIndividual && ContactOverrides.linkedName(id).isNotNullOrBlank()) {
+      FallbackAvatar.forTextOrDefault(ContactOverrides.linkedName(id)!!, avatarColor) // BACKCHANNEL
     } else if (!profileName.isEmpty) {
       FallbackAvatar.forTextOrDefault(profileName.toString(), avatarColor)
     } else {
