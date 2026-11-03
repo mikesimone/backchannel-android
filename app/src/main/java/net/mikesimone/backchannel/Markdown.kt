@@ -239,12 +239,15 @@ object Markdown {
 
   /** Turns block markdown in [text] into what every Signal app can show. */
   @JvmStatic
-  fun blocks(text: Editable) {
+  @JvmOverloads
+  fun blocks(text: Editable, from: Int = 0, to: Int = text.length) {
     edit(text) {
-      var start = 0
+      // Only the lines touching [from, to); what follows keeps its length from the end.
+      var start = if (from <= 0) 0 else text.lastIndexOf('\n', from - 1) + 1
+      val tail = (text.length - to).coerceAtLeast(0)
       var inCode = false
       var codeStart = -1
-      while (start <= text.length) {
+      while (start < text.length - tail) {
         var end = text.indexOf('\n', start)
         if (end < 0) end = text.length
         val line = text.subSequence(start, end).toString()
@@ -276,7 +279,7 @@ object Markdown {
         if (next > text.length) break
         start = next
       }
-      if (inCode && codeStart < text.length) addStyle(text, BodyRange.Style.MONOSPACE, codeStart, text.length)
+      if (inCode && codeStart < text.length - tail) addStyle(text, BodyRange.Style.MONOSPACE, codeStart, text.length - tail)
 
       // Inline extras: **bold**, __bold__, [text](url)
       var m = DOUBLE.find(text)
@@ -408,6 +411,10 @@ object Markdown {
         to = at
       }
     }
+    // Pasted markdown (often from an LLM) converts right away: lists, headings, code blocks.
+    val before = text.length
+    blocks(text, start, to)
+    to += text.length - before
     pass(text, start, to)
   }
 

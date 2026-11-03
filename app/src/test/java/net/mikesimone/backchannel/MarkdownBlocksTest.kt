@@ -51,6 +51,14 @@ class MarkdownBlocksTest {
   }
 
   @Test
+  fun pasteConvertsOnlyPastedLines() {
+    val text = SpannableStringBuilder("# mine\n* a\n* b\n* tail")
+    val from = text.indexOf("* a")
+    Markdown.blocks(text, from, from + "* a\n* b".length)
+    assertEquals("# mine\n• a\n• b\n* tail", text.toString())
+  }
+
+  @Test
   fun dashIsNotABullet() {
     assertEquals("- signed, me", blocks("- signed, me"))
   }
