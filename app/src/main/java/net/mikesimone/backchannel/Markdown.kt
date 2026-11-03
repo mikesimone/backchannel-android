@@ -201,9 +201,189 @@ object Markdown {
     }
   }
 
+
+  // --- block markdown (Mike 2026-11-03): lists, indents, headings, quotes, code blocks ---
+  //
+  // Signal only carries bold, italic, strikethrough, monospace and spoiler, so
+  // block markdown becomes plain characters every Signal app shows: bullets,
+  // em-space indents, a quote bar, a rule. Headings turn bold, code blocks
+  // monospace, [text](url) becomes "text (url)".
+
+  private const val INDENT = " "
+  private val BULLETS = listOf("•", "◦", "▪")
+  private const val QUOTE_BAR = "▍ "
+  private const val RULE = "──────────"
+
+  private val FENCE = Regex("^\\s*```.*$")
+  private val HEADING = Regex("^#{1,6}\\s+(.*)$")
+  private val RULE_LINE = Regex("^\\s*(?:-{3,}|\\*{3,}|_{3,})\\s*$")
+  private val BULLET_LINE = Regex("^([ \\t\\u2003]*)[-*+•◦▪]\\s+(\\[[ xX]\\]\\s+)?")
+  private val NUMBER_LINE = Regex("^([ \\t\\u2003]*)(\\d{1,3}[.)])\\s+")
+  private val QUOTE_LINE = Regex("^>(?: |$)")
+  private val LEAD = Regex("^[ \\t\\u2003]+")
+  private val DOUBLE = Regex("(\\*\\*|__)(?=\\S)(.+?)(?<=\\S)\\1")
+  private val MD_LINK = Regex("\\[([^\\]\\n]+)]\\((https?://[^)\\s]+)\\)")
+
+  /** Indent level of leading whitespace: a tab, two spaces or an em space is one level. */
+  private fun level(lead: String): Int {
+    var n = 0
+    var spaces = 0
+    for (c in lead) {
+      when (c) {
+        '\t', ' ' -> { n++; spaces = 0 }
+        ' ' -> { spaces++; if (spaces == 2) { n++; spaces = 0 } }
+      }
+    }
+    return n
+  }
+
+  /** Turns block markdown in [text] into what every Signal app can show. */
+  @JvmStatic
+  fun blocks(text: Editable) {
+    edit(text) {
+      var start = 0
+      var inCode = false
+      var codeStart = -1
+      while (start <= text.length) {
+        var end = text.indexOf('\n', start)
+        if (end < 0) end = text.length
+        val line = text.subSequence(start, end).toString()
+
+        if (FENCE.matches(line)) {
+          // Drop the fence line with one of its line breaks; style what was between.
+          val atEnd = end >= text.length
+          if (!atEnd) text.delete(start, end + 1) else text.delete(if (start > 0) start - 1 else start, end)
+          val here = if (atEnd) text.length else start
+          if (inCode) {
+            val codeEnd = if (atEnd) here else here - 1
+            if (codeEnd > codeStart) addStyle(text, BodyRange.Style.MONOSPACE, codeStart, codeEnd)
+            inCode = false
+          } else {
+            inCode = true
+            codeStart = here
+          }
+          start = here
+          if (atEnd) break
+          continue
+        }
+
+        var next: Int
+        if (inCode) {
+          next = end + 1
+        } else {
+          next = convertLine(text, start, end, line)
+        }
+        if (next > text.length) break
+        start = next
+      }
+      if (inCode && codeStart < text.length) addStyle(text, BodyRange.Style.MONOSPACE, codeStart, text.length)
+
+      // Inline extras: **bold**, __bold__, [text](url)
+      var m = DOUBLE.find(text)
+      while (m != null) {
+        val s = m.range.first
+        val inner = m.groupValues[2]
+        if (!hasStyleAt(text, BodyRange.Style.MONOSPACE, s)) {
+          text.replace(s, m.range.last + 1, inner)
+          addStyle(text, BodyRange.Style.BOLD, s, s + inner.length)
+          m = DOUBLE.find(text, s + inner.length)
+        } else {
+          m = DOUBLE.find(text, m.range.last + 1)
+        }
+      }
+      var l = MD_LINK.find(text)
+      while (l != null) {
+        val s = l.range.first
+        val shown = "${l.groupValues[1]} (${l.groupValues[2]})"
+        text.replace(s, l.range.last + 1, shown)
+        l = MD_LINK.find(text, s + shown.length)
+      }
+    }
+  }
+
+  /** Converts one line in [start, end); returns where the next line starts. */
+  private fun convertLine(text: Editable, start: Int, end: Int, line: String): Int {
+    HEADING.matchEntire(line)?.let { m ->
+      val body = m.groupValues[1]
+      text.replace(start, end, body)
+      addStyle(text, BodyRange.Style.BOLD, start, start + body.length)
+      return start + body.length + 1
+    }
+    if (RULE_LINE.matches(line)) {
+      text.replace(start, end, RULE)
+      return start + RULE.length + 1
+    }
+    BULLET_LINE.find(line)?.let { m ->
+      val lvl = level(m.groupValues[1])
+      val box = m.groupValues[2].trim()
+      val prefix = INDENT.repeat(lvl) + BULLETS[lvl % BULLETS.size] + " " +
+        when {
+          box.isEmpty() -> ""
+          box[1] == ' ' -> "☐ "
+          else -> "☑ "
+        }
+      text.replace(start, start + m.value.length, prefix)
+      return end - m.value.length + prefix.length + 1
+    }
+    NUMBER_LINE.find(line)?.let { m ->
+      val prefix = INDENT.repeat(level(m.groupValues[1])) + m.groupValues[2] + " "
+      text.replace(start, start + m.value.length, prefix)
+      return end - m.value.length + prefix.length + 1
+    }
+    QUOTE_LINE.find(line)?.let { m ->
+      text.replace(start, start + m.value.length, QUOTE_BAR)
+      val newEnd = end - m.value.length + QUOTE_BAR.length
+      addStyle(text, BodyRange.Style.ITALIC, start + QUOTE_BAR.length, newEnd)
+      return newEnd + 1
+    }
+    LEAD.find(line)?.let { m ->
+      val lvl = level(m.value)
+      if (lvl > 0) {
+        val prefix = INDENT.repeat(lvl)
+        text.replace(start, start + m.value.length, prefix)
+        return end - m.value.length + prefix.length + 1
+      }
+    }
+    return end + 1
+  }
+
+  /** Typing "- " or "* " at the start of a line makes a bullet right away. */
+  private fun bulletTyped(text: Editable, caret: Int): Int {
+    val lineStart = text.lastIndexOf('\n', caret - 2) + 1
+    val before = text.subSequence(lineStart, caret - 1).toString()
+    val m = Regex("^([ \\t\\u2003]*)[-*+]$").matchEntire(before) ?: return -1
+    val lvl = level(m.groupValues[1])
+    val prefix = INDENT.repeat(lvl) + BULLETS[lvl % BULLETS.size] + " "
+    edit(text) { text.replace(lineStart, caret, prefix) }
+    return lineStart + prefix.length
+  }
+
+  private val LIST_PREFIX = Regex("^([\\u2003]*)(?:([•◦▪]) (?:[☐☑] )?|(\\d{1,3})([.)]) )")
+
+  /** Enter on a list line continues the list; Enter on an empty item ends it. Returns the new caret or -1. */
+  private fun newlineTyped(text: Editable, newline: Int): Int {
+    val lineStart = text.lastIndexOf('\n', newline - 1) + 1
+    val line = text.subSequence(lineStart, newline).toString()
+    val m = LIST_PREFIX.find(line) ?: return -1
+    if (line.length == m.value.length) {
+      // Empty item: remove its marker and the new line break.
+      edit(text) { text.delete(lineStart, newline + 1) }
+      return lineStart
+    }
+    val number = m.groupValues[3]
+    val prefix = if (number.isNotEmpty()) {
+      m.groupValues[1] + (number.toInt() + 1) + m.groupValues[4] + " "
+    } else {
+      m.value.replace("☑", "☐")
+    }
+    edit(text) { text.insert(newline + 1, prefix) }
+    return newline + 1 + prefix.length
+  }
+
   /** Called with the compose text just before it's sent. */
   @JvmStatic
   fun passBeforeSend(text: Editable): Editable {
+    blocks(text)
     pass(text)
     return text
   }
@@ -254,6 +434,8 @@ object Markdown {
 
     private var undo: Undo? = null
     private var typedCaret = -1
+    private var spaceCaret = -1
+    private var newlineAt = -1
     private var undoPending = false
     private var busy = false
 
@@ -262,8 +444,15 @@ object Markdown {
     override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
       if (busy || applying) return
       typedCaret = -1
+      spaceCaret = -1
+      newlineAt = -1
       undoPending = false
       val u = undo
+      if (before == 0 && count == 1 && s[start] == ' ') {
+        spaceCaret = start + 1
+      } else if (before == 0 && count == 1 && s[start] == '\n') {
+        newlineAt = start
+      }
       if (before == 0 && count == 1 && MARKS.containsKey(s[start])) {
         typedCaret = start + 1
       } else if (before == 1 && count == 0 && u != null && start == u.caret - 1) {
@@ -278,6 +467,24 @@ object Markdown {
       busy = true
       try {
         val u = undo
+        val caretAt = editText.selectionStart
+        if (spaceCaret >= 0 && caretAt == spaceCaret && editText.selectionEnd == caretAt) {
+          val saved = SpannableStringBuilder(s)
+          val caret = bulletTyped(s, spaceCaret)
+          if (caret >= 0) {
+            editText.setSelection(minOf(caret, s.length))
+            undo = Undo(saved, caret, spaceCaret)
+            return
+          }
+        }
+        if (newlineAt >= 0 && caretAt == newlineAt + 1 && editText.selectionEnd == caretAt) {
+          val caret = newlineTyped(s, newlineAt)
+          if (caret >= 0) {
+            editText.setSelection(minOf(caret, s.length))
+            undo = null
+            return
+          }
+        }
         if (undoPending && u != null) {
           undo = null
           edit(s) { s.replace(0, s.length, u.saved) }
@@ -295,6 +502,8 @@ object Markdown {
       } finally {
         busy = false
         typedCaret = -1
+        spaceCaret = -1
+        newlineAt = -1
         undoPending = false
       }
     }
