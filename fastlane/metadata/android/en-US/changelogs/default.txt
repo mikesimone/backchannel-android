@@ -1,1 +1,1 @@
-New: link anyone to a phone contact by hand, even if they hide their number (chat settings > Link to phone contact). It stays linked. Set your own photo for anyone, even people not in your contacts (chat settings > Contact photo). Setup screens say Backchannel instead of Signal.
+New: a What's New screen after every update, listing everything Backchannel has added since the first release.

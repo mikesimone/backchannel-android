@@ -87,6 +87,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import im.molly.unifiedpush.UnifiedPushDistributor
+import net.mikesimone.backchannel.WhatsNew
 import org.signal.core.ui.BottomSheetUtil
 import org.signal.core.ui.compose.Snackbars
 import org.signal.core.ui.compose.theme.SignalTheme
@@ -862,6 +863,8 @@ class MainActivity :
         }
         .setCancelable(false)
         .show()
+    } else if (WhatsNew.shouldShow(this)) {
+      WhatsNew.show(this) // BACKCHANNEL: what's new pop-up after each update
     }
 
     vitalsViewModel.checkSlowNotificationHeuristics()
