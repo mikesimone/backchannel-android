@@ -7,7 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.annotation.LayoutRes
-import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.DialogFragment
 import org.thoughtcrime.securesms.R
 
@@ -40,11 +42,6 @@ abstract class KeyboardEntryDialogFragment(@LayoutRes contentLayoutId: Int) :
 
     dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
 
-    // BACKCHANNEL: on targetSdk 36 dialog windows are edge-to-edge and ignore
-    // adjustResize, so the caption box sat under the keyboard. Fit the content
-    // inside the system bars and keyboard again.
-    dialog.window?.let { WindowCompat.setDecorFitsSystemWindows(it, true) }
-
     return dialog
   }
 
@@ -52,6 +49,7 @@ abstract class KeyboardEntryDialogFragment(@LayoutRes contentLayoutId: Int) :
     hasShown = false
 
     val view = super.onCreateView(inflater, container, savedInstanceState)
+    if (view != null) keepAboveKeyboard(view)
     return if (view is KeyboardAwareLinearLayout) {
       view.addOnKeyboardShownListener(this)
       view.addOnKeyboardHiddenListener(this)
@@ -59,6 +57,23 @@ abstract class KeyboardEntryDialogFragment(@LayoutRes contentLayoutId: Int) :
     } else {
       throw IllegalStateException("Expected parent of view hierarchy to be keyboard aware.")
     }
+  }
+
+  /**
+   * BACKCHANNEL: on targetSdk 36 every window is edge-to-edge: the theme's
+   * windowOptOutEdgeToEdgeEnforcement and adjustResize are ignored, and so was
+   * setDecorFitsSystemWindows(true) (the bc4 attempt). The caption box under a
+   * photo or video sat behind the keyboard. Pad the content by the system bars
+   * and by the keyboard, whichever is taller at the bottom.
+   */
+  private fun keepAboveKeyboard(view: View) {
+    ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+      val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+      val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+      v.updatePadding(left = bars.left, top = bars.top, right = bars.right, bottom = maxOf(bars.bottom, ime.bottom))
+      WindowInsetsCompat.CONSUMED
+    }
+    ViewCompat.requestApplyInsets(view)
   }
 
   override fun onPause() {
