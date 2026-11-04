@@ -29,5 +29,22 @@
   <string name="ContactOverrides__remove_photo">Remove photo</string>
   <string name="ContactOverrides__couldnt_set_photo">Couldn\'t use that photo</string>
   <string name="WhatsNew__title">What\'s new in Backchannel</string>
-  <string name="WhatsNew__body"><b>Version 8</b>\n• The message box under a photo or video stays above the keyboard\n• Lists, indents, headings, quotes and code blocks: type markdown like * item, # Title, &gt; quote or ``` and everyone sees it, Signal users too\n• This What\'s New screen, after every update\n\n<b>Version 6</b>\n• Link anyone to a phone contact, even if they hide their number (chat settings &gt; Link to phone contact). It stays linked.\n• Your own photo for anyone, even people not in your contacts (chat settings &gt; Contact photo)\n• Lock any chat behind your fingerprint (chat settings &gt; Lock this chat)\n• Double-tap a message to react\n• Starred messages\n• Typed :) ;) :( turn into emoji\n• Attach photos through Google Photos or another photo app that lets you pick (from Immich, use Share &gt; Backchannel)\n• One default emoji skin tone (Settings &gt; Chats)\n• Open Signal links in Backchannel (Settings &gt; Chats)\n• Google push is the default, through Backchannel\'s own registration\n• Emoji reaction tabs no longer sit under the navigation bar\n• Setup screens say Backchannel instead of Signal\n\n<b>Version 4</b>\n• New icon\n• Passphrase is optional, and screenshots are allowed\n• Screens fit around the navigation bar and keyboard\n\n<b>First release</b>\n• Reply privately to a group message\n• Forward to any number of chats, with @mentions\n• Send one poll to many chats\n• Markdown shortcuts, bold italic, and styled copies\n• Sticker replies</string>
+  <string name="WhatsNew__body"><b>Version 9</b>\n• Immich: attach photos and videos straight from your own Immich server (attach menu &gt; Immich)\n\n<b>Version 8</b>\n• The message box under a photo or video stays above the keyboard\n• Lists, indents, headings, quotes and code blocks: type markdown like * item, # Title, &gt; quote or ``` and everyone sees it, Signal users too\n• This What\'s New screen, after every update\n\n<b>Version 6</b>\n• Link anyone to a phone contact, even if they hide their number (chat settings &gt; Link to phone contact). It stays linked.\n• Your own photo for anyone, even people not in your contacts (chat settings &gt; Contact photo)\n• Lock any chat behind your fingerprint (chat settings &gt; Lock this chat)\n• Double-tap a message to react\n• Starred messages\n• Typed :) ;) :( turn into emoji\n• Attach photos through Google Photos or another photo app that lets you pick (from Immich, use Share &gt; Backchannel)\n• One default emoji skin tone (Settings &gt; Chats)\n• Open Signal links in Backchannel (Settings &gt; Chats)\n• Google push is the default, through Backchannel\'s own registration\n• Emoji reaction tabs no longer sit under the navigation bar\n• Setup screens say Backchannel instead of Signal\n\n<b>Version 4</b>\n• New icon\n• Passphrase is optional, and screenshots are allowed\n• Screens fit around the navigation bar and keyboard\n\n<b>First release</b>\n• Reply privately to a group message\n• Forward to any number of chats, with @mentions\n• Send one poll to many chats\n• Markdown shortcuts, bold italic, and styled copies\n• Sticker replies</string>
+  <!-- Immich picker (Backchannel) -->
+  <string name="AttachmentKeyboard_immich">Immich</string>
+  <string name="Immich__title">Immich</string>
+  <string name="Immich__photos">Photos</string>
+  <string name="Immich__albums">Albums</string>
+  <string name="Immich__search">Search your photos</string>
+  <string name="Immich__search_failed">Search didn\'t work. It needs Smart Search turned on in Immich.</string>
+  <string name="Immich__cant_reach">Couldn\'t reach your Immich server</string>
+  <string name="Immich__nothing">No photos or videos here</string>
+  <string name="Immich__no_albums">No albums</string>
+  <string name="Immich__add">Add %1$d</string>
+  <string name="Immich__disconnect">Disconnect from Immich</string>
+  <string name="Immich__setup_intro">Attach photos and videos straight from your own Immich server. The address and key stay on this phone.</string>
+  <string name="Immich__server">Server address</string>
+  <string name="Immich__api_key">API key</string>
+  <string name="Immich__api_key_help">In Immich on the web, open Account settings &gt; API keys &gt; New API key. Give it All permissions, or at least asset read, view and download, album read and user read.</string>
+  <string name="Immich__connect">Connect</string>
 </resources>

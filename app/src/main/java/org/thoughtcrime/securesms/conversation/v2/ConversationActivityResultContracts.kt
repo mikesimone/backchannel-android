@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.content.IntentCompat
 import androidx.fragment.app.Fragment
+import net.mikesimone.backchannel.immich.ImmichPickerActivity
 import org.signal.core.models.media.Media
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.util.logging.Log
@@ -53,7 +54,8 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
   private val selectLocationLauncher = fragment.registerForActivityResult(SelectLocation) { result -> callbacks.onLocationSelected(result?.place, result?.uri) }
   private val selectFileLauncher = fragment.registerForActivityResult(SelectFile) { result -> callbacks.onFileSelected(result) }
   private val cameraLauncher = fragment.registerForActivityResult(MediaCapture) { result -> callbacks.onMediaSend(result) }
-  private val photoAppsLauncher = fragment.registerForActivityResult(PhotoApps) { uris -> callbacks.onPhotoAppsSelected(uris) }
+  private val photoAppsLauncher = fragment.registerForActivityResult(PhotoApps) { uris -> callbacks.onPhotoAppsSelected(uris, false) }
+  private val immichLauncher = fragment.registerForActivityResult(ImmichPickerActivity.Contract) { uris -> callbacks.onPhotoAppsSelected(uris, true) }
 
   fun launchContactShareEditor(uri: Uri, chatColors: ChatColors) {
     contactShareLauncher.launch(uri to chatColors)
@@ -119,7 +121,12 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
     return false
   }
 
-  // BACKCHANNEL: lets Google Photos, Immich or any other photo app act as the picker.
+  // BACKCHANNEL: picks photos and videos from the user's own Immich server.
+  fun launchImmich() {
+    immichLauncher.launch(Unit)
+  }
+
+  // BACKCHANNEL: lets Google Photos or another photo app act as the picker.
   fun launchPhotoApps(): Boolean {
     return try {
       photoAppsLauncher.launch(fragment.getString(R.string.AttachmentKeyboard_photo_apps))
@@ -301,6 +308,7 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
     fun onContactSelect(uri: Uri?)
     fun onLocationSelected(place: SignalPlace?, uri: Uri?)
     fun onFileSelected(uri: Uri?)
-    fun onPhotoAppsSelected(uris: List<Uri>)
+    /** [internal]: the files are Backchannel's own downloads (Immich), not another app's. */
+    fun onPhotoAppsSelected(uris: List<Uri>, internal: Boolean)
   }
 }

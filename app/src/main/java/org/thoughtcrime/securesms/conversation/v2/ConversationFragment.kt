@@ -4637,14 +4637,14 @@ class ConversationFragment :
     }
 
     // BACKCHANNEL: photos picked in another app go through the normal media editor.
-    override fun onPhotoAppsSelected(uris: List<Uri>) {
+    override fun onPhotoAppsSelected(uris: List<Uri>, internal: Boolean) {
       val recipient = viewModel.recipientSnapshot ?: return
       if (uris.isEmpty()) {
         return
       }
 
       ShareRepository(requireContext())
-        .resolve(UnresolvedShareData.ExternalMultiShare(uris, null))
+        .resolve(UnresolvedShareData.ExternalMultiShare(uris, null, isInternalShare = internal))
         .observeOn(AndroidSchedulers.mainThread())
         .subscribe { resolved ->
           if (resolved is ResolvedShareData.Media) {
@@ -5166,6 +5166,8 @@ class ConversationFragment :
               toast(R.string.AttachmentManager_cant_open_media_selection, Toast.LENGTH_LONG)
             }
           }
+
+          AttachmentKeyboardButton.IMMICH -> conversationActivityResultContracts.launchImmich()
 
           AttachmentKeyboardButton.CONTACT -> conversationActivityResultContracts.launchSelectContact()
 
