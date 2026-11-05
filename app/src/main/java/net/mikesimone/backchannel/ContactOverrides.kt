@@ -13,6 +13,7 @@ import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.contacts.avatars.ContactPhoto
 import org.thoughtcrime.securesms.contacts.avatars.SystemContactPhoto
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.jobs.MultiDeviceContactUpdateJob
 import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import java.io.File
@@ -29,9 +30,11 @@ import java.util.concurrent.ConcurrentHashMap
  *    deleted or unreadable, the last name and photo are kept.
  * 2. Set your own photo for anyone, in or out of your phone contacts.
  *
- * All of it is stored on this phone only. A custom photo always wins; a linked
- * contact's photo is treated like any other phone-contact photo. A Signal
- * nickname still wins over the linked contact's name.
+ * Stored on this phone, and sent to your linked devices in Signal's own
+ * contact sync, the way a matched phone contact's name and photo are (Mike
+ * 2026-11-05: Backchannel Web should show the same). A custom photo always
+ * wins; a linked contact's photo is treated like any other phone-contact
+ * photo. A Signal nickname still wins over the linked contact's name.
  */
 object ContactOverrides {
 
@@ -118,6 +121,23 @@ object ContactOverrides {
   @JvmStatic
   fun hasCustomPhoto(id: RecipientId): Boolean = entry(id)?.customPhoto != null
 
+  /** True if the contact sync should carry this person's name like a phone contact's. */
+  @JvmStatic
+  fun hasSyncName(id: RecipientId): Boolean = !entry(id)?.name.isNullOrBlank()
+
+  /** The photo linked devices get in the contact sync: your own photo, else the linked contact's. */
+  @JvmStatic
+  fun syncPhotoFile(id: RecipientId): File? = entry(id)?.let { it.customPhoto ?: it.linkedPhoto }?.takeIf { it.exists() }
+
+  /** Sends this person's new name and photo to linked devices (the job does nothing without any). */
+  private fun syncToLinkedDevices(id: RecipientId) {
+    try {
+      AppDependencies.jobManager.add(MultiDeviceContactUpdateJob(id))
+    } catch (e: Throwable) {
+      Log.w(TAG, "Couldn't queue the contact sync", e)
+    }
+  }
+
   /** Links [id] to the phone contact at [contactUri] (from a contact picker). */
   @WorkerThread
   fun link(context: Context, id: RecipientId, contactUri: Uri): Boolean {
@@ -142,6 +162,7 @@ object ContactOverrides {
     copyContactPhoto(context, key, contactUri)
     reload(context, key)
     Recipient.live(id).refresh()
+    syncToLinkedDevices(id)
     return true
   }
 
@@ -152,6 +173,7 @@ object ContactOverrides {
     linkedFile(context, key).delete()
     reload(context, key)
     Recipient.live(id).refresh()
+    syncToLinkedDevices(id)
   }
 
   /** Sets your own photo for [id] from an image [imageUri], cropped square. */
@@ -165,6 +187,7 @@ object ContactOverrides {
       tmp.renameTo(customFile(context, key))
       reload(context, key)
       Recipient.live(id).refresh()
+      syncToLinkedDevices(id)
       true
     } catch (e: Exception) {
       Log.w(TAG, "Couldn't set custom photo", e)
@@ -178,6 +201,7 @@ object ContactOverrides {
     customFile(context, key).delete()
     reload(context, key)
     Recipient.live(id).refresh()
+    syncToLinkedDevices(id)
   }
 
   /** Picks up name and photo changes in linked contacts. Keeps the old values if a contact is gone. */
@@ -202,6 +226,7 @@ object ContactOverrides {
         if (changedName || changedPhoto) {
           reload(context, key)
           Recipient.live(RecipientId.from(key)).refresh()
+          syncToLinkedDevices(RecipientId.from(key))
         }
       } catch (e: Exception) {
         Log.w(TAG, "Couldn't refresh a linked contact", e)

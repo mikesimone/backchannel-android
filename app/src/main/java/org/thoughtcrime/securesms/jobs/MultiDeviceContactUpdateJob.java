@@ -10,6 +10,7 @@ import android.provider.ContactsContract;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import net.mikesimone.backchannel.ContactOverrides;
 import org.signal.core.ui.permissions.Permissions;
 import org.signal.core.util.AppForegroundObserver;
 import org.signal.core.util.logging.Log;
@@ -50,6 +51,8 @@ import org.whispersystems.signalservice.api.util.InvalidNumberException;
 import org.whispersystems.signalservice.internal.crypto.PaddingInputStream;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -166,8 +169,8 @@ public class MultiDeviceContactUpdateJob extends BaseJob {
 
       out.write(new DeviceContact(recipient.getAci(),
                                   recipient.getE164(),
-                                  Optional.ofNullable(recipient.isGroup() || recipient.isSystemContact() ? recipient.getDisplayName(context) : null),
-                                  getSystemAvatar(recipient.getContactUri()),
+                                  Optional.ofNullable(recipient.isGroup() || recipient.isSystemContact() || ContactOverrides.hasSyncName(recipient.getId()) ? recipient.getDisplayName(context) : null), // BACKCHANNEL: hand-linked contact
+                                  getAvatar(recipient),
                                   recipient.getExpiresInSeconds() > 0 ? Optional.of(recipient.getExpiresInSeconds())
                                                                       : Optional.empty(),
                                   Optional.of(recipient.getExpireTimerVersion()),
@@ -220,7 +223,7 @@ public class MultiDeviceContactUpdateJob extends BaseJob {
 
       for (Recipient recipient : recipients) {
         Optional<IdentityRecord>  identity           = AppDependencies.getProtocolStore().aci().identities().getIdentityRecord(recipient.getId());
-        Optional<String>          name               = Optional.ofNullable(recipient.isSystemContact() ? recipient.getDisplayName(context) : recipient.getGroupName(context));
+        Optional<String>          name               = Optional.ofNullable(recipient.isSystemContact() || ContactOverrides.hasSyncName(recipient.getId()) ? recipient.getDisplayName(context) : recipient.getGroupName(context)); // BACKCHANNEL: hand-linked contact
         Optional<Integer>         expireTimer        = recipient.getExpiresInSeconds() > 0 ? Optional.of(recipient.getExpiresInSeconds()) : Optional.empty();
         Optional<Integer>         expireTimerVersion = Optional.of(recipient.getExpireTimerVersion());
         Optional<Integer>         inboxPosition      = Optional.ofNullable(inboxPositions.get(recipient.getId()));
@@ -228,7 +231,7 @@ public class MultiDeviceContactUpdateJob extends BaseJob {
         out.write(new DeviceContact(recipient.getAci(),
                                     recipient.getE164(),
                                     name,
-                                    getSystemAvatar(recipient.getContactUri()),
+                                    getAvatar(recipient),
                                     expireTimer,
                                     expireTimerVersion,
                                     inboxPosition));
@@ -299,6 +302,15 @@ public class MultiDeviceContactUpdateJob extends BaseJob {
     } else {
       Log.w(TAG, "Nothing to write!");
     }
+  }
+
+  // BACKCHANNEL: your own photo for them, else a hand-linked contact's, else the matched phone contact's.
+  private Optional<DeviceContactAvatar> getAvatar(Recipient recipient) throws IOException {
+    File file = ContactOverrides.syncPhotoFile(recipient.getId());
+    if (file != null) {
+      return Optional.of(new DeviceContactAvatar(new FileInputStream(file), file.length(), "image/jpeg"));
+    }
+    return getSystemAvatar(recipient.getContactUri());
   }
 
   private Optional<DeviceContactAvatar> getSystemAvatar(@Nullable Uri uri) throws IOException {
