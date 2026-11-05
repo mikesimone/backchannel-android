@@ -42,6 +42,7 @@ import io.reactivex.rxjava3.kotlin.subscribeBy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import net.mikesimone.backchannel.PhotoReply
 import org.signal.core.models.media.Media
 import org.signal.core.ui.logging.LoggingFragment
 import org.signal.core.ui.util.ThemeUtil
@@ -367,12 +368,14 @@ class MediaPreviewV2Fragment :
     if (currentItem.threadId == MediaIntentFactory.NOT_IN_A_THREAD.toLong()) {
       menu.findItem(R.id.delete).isVisible = false
     }
+    menu.findItem(R.id.backchannel_photo_reply)?.isVisible = PhotoReply.canReply(currentItem) // BACKCHANNEL
 
     binding.toolbar.setOnMenuItemClickListener {
       when (it.itemId) {
         R.id.edit -> editMediaItem(currentItem)
         R.id.save -> saveToDisk(currentItem)
         R.id.delete -> deleteMedia(currentItem)
+        R.id.backchannel_photo_reply -> PhotoReply.show(this, currentItem) // BACKCHANNEL
         android.R.id.home -> requireActivity().finish()
         else -> return@setOnMenuItemClickListener false
       }

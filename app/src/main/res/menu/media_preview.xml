@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- BACKCHANNEL: reply or react to just this photo of a multi-photo message -->
+    <item android:id="@+id/backchannel_photo_reply"
+          android:title="@string/PhotoReply__menu"
+          android:icon="@drawable/symbol_reply_24"
+          app:iconTint="@android:color/white"
+          app:showAsAction="always"/>
     <item android:id="@+id/edit"
           android:title="@string/media_preview__edit_title"
           android:icon="@drawable/ic_editmedia_outline_24"
