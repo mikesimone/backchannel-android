@@ -825,6 +825,7 @@ class ConversationFragment :
 
     if (!args.conversationScreenType.isInBubble) {
       AppDependencies.messageNotifier.setVisibleThread(ConversationId.forConversation(args.threadId))
+      net.mikesimone.backchannel.NoteToSelfUnread.onConversationOpened(args.threadId) // BACKCHANNEL
     } else {
       AppDependencies.messageNotifier.setVisibleBubbleThread(ConversationId.forConversation(args.threadId))
     }
@@ -857,6 +858,7 @@ class ConversationFragment :
 
     if (!args.conversationScreenType.isInBubble) {
       AppDependencies.messageNotifier.clearVisibleThread(ConversationId.forConversation(args.threadId))
+      net.mikesimone.backchannel.NoteToSelfUnread.onConversationLeft(args.threadId) // BACKCHANNEL
     } else {
       AppDependencies.messageNotifier.clearVisibleBubbleThread()
     }
