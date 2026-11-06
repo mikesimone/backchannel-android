@@ -2861,6 +2861,17 @@ class ConversationFragment :
       )
     }
 
+    // BACKCHANNEL: remind me about this message
+    if (menuState.shouldShowDetailsAction()) {
+      items.add(
+        ActionItem(R.drawable.symbol_bell_24, resources.getString(R.string.Reminders__menu)) {
+          val record = getSelectedConversationMessage().messageRecord
+          net.mikesimone.backchannel.MessageReminders.pick(requireContext(), record.id, record.threadId)
+          finishActionMode()
+        }
+      )
+    }
+
     if (menuState.shouldShowDeleteAction()) {
       items.add(
         ActionItem(CoreUiR.drawable.symbol_trash_24, resources.getString(R.string.conversation_selection__menu_delete)) {
@@ -4527,6 +4538,7 @@ class ConversationFragment :
         ConversationReactionOverlay.Action.UNPIN_MESSAGE -> handleUnpinMessage(conversationMessage.messageRecord.id)
         ConversationReactionOverlay.Action.STAR_MESSAGE -> handleStarMessages(setOf(conversationMessage.messageRecord.id))
         ConversationReactionOverlay.Action.UNSTAR_MESSAGE -> handleUnstarMessages(setOf(conversationMessage.messageRecord.id))
+        ConversationReactionOverlay.Action.REMIND_ME -> net.mikesimone.backchannel.MessageReminders.pick(requireContext(), conversationMessage.messageRecord.id, conversationMessage.messageRecord.threadId) // BACKCHANNEL
       }
     }
   }

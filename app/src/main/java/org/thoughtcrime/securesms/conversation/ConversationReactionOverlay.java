@@ -733,6 +733,11 @@ public final class ConversationReactionOverlay extends FrameLayout {
       items.add(new ActionItem(R.drawable.symbol_star_outline_24, getResources().getString(R.string.conversation_selection__menu_unstar), () -> handleActionItemClicked(Action.UNSTAR_MESSAGE)));
     }
 
+    // BACKCHANNEL: remind me about this message
+    if (menuState.shouldShowDetailsAction()) {
+      items.add(new ActionItem(R.drawable.symbol_bell_24, getResources().getString(R.string.Reminders__menu), () -> handleActionItemClicked(Action.REMIND_ME)));
+    }
+
     backgroundView.setVisibility(menuState.shouldShowReactions() ? View.VISIBLE : View.INVISIBLE);
     foregroundView.setVisibility(menuState.shouldShowReactions() ? View.VISIBLE : View.INVISIBLE);
 
@@ -924,6 +929,7 @@ public final class ConversationReactionOverlay extends FrameLayout {
     PIN_MESSAGE,
     UNPIN_MESSAGE,
     STAR_MESSAGE,
-    UNSTAR_MESSAGE
+    UNSTAR_MESSAGE,
+    REMIND_ME // BACKCHANNEL
   }
 }

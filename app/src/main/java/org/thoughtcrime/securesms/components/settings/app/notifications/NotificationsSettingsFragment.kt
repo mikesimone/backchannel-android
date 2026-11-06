@@ -25,10 +25,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringArrayResource
@@ -679,6 +682,17 @@ fun NotificationsSettingsScreen(
           text = stringResource(R.string.NotificationsSettingsFragment__contact_joins_signal),
           checked = state.notifyWhenContactJoinsSignal,
           onCheckChanged = callbacks::setNotifyWhenContactJoinsSignal
+        )
+      }
+
+      // BACKCHANNEL: keyword alerts break through mute
+      item {
+        val context = LocalContext.current
+        var keywordSummary by remember { mutableStateOf(net.mikesimone.backchannel.KeywordAlerts.summary(context)) }
+        Rows.TextRow(
+          text = stringResource(R.string.KeywordAlerts__title),
+          label = keywordSummary,
+          onClick = { net.mikesimone.backchannel.KeywordAlerts.edit(context) { keywordSummary = it } }
         )
       }
 

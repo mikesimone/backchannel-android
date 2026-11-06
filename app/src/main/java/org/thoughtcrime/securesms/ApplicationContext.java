@@ -237,6 +237,7 @@ public class ApplicationContext extends Application implements AppForegroundObse
               .addNonBlocking(this::initializeRevealableMessageManager)
               .addNonBlocking(this::initializePendingRetryReceiptManager)
               .addNonBlocking(this::initializeScheduledMessageManager)
+              .addNonBlocking(() -> net.mikesimone.backchannel.MessageReminders.schedule(this)) // BACKCHANNEL: message reminders
               .addNonBlocking(PreKeysSyncJob::enqueueIfNeeded)
               .addNonBlocking(this::initializePeriodicTasks)
               .addNonBlocking(this::initializeCleanup)

@@ -188,6 +188,7 @@ object NotificationStateProvider {
         isIncomingMissedCall -> threadRecipient.callNotificationSetting == RecipientTable.NotificationSetting.ALWAYS_NOTIFY
         messageRecord.hasSelfMention() -> threadRecipient.mentionSetting == RecipientTable.NotificationSetting.ALWAYS_NOTIFY
         messageRecord.isQuoteOfSelf() -> threadRecipient.replyNotificationSetting == RecipientTable.NotificationSetting.ALWAYS_NOTIFY
+        !messageRecord.isOutgoing && net.mikesimone.backchannel.KeywordAlerts.matches(messageRecord.body) -> true // BACKCHANNEL: keyword alerts
         else -> false
       }
     }

@@ -1416,6 +1416,11 @@
             android:name=".service.ScheduledMessageManager$ScheduledMessagesAlarm"
             android:exported="false" />
 
+        <!-- BACKCHANNEL: message reminders -->
+        <receiver
+            android:name="net.mikesimone.backchannel.MessageReminders$Alarm"
+            android:exported="false" />
+
         <receiver
             android:name=".service.PinnedMessageManager$PinnedMessagesAlarm"
             android:exported="false" />
