@@ -2861,6 +2861,16 @@ class ConversationFragment :
       )
     }
 
+    // BACKCHANNEL: transcribe a voice message on the phone
+    if (menuState.shouldShowDetailsAction() && net.mikesimone.backchannel.VoiceTranscriber.canTranscribe(getSelectedConversationMessage().messageRecord)) {
+      items.add(
+        ActionItem(CoreUiR.drawable.symbol_mic_24, resources.getString(R.string.Transcribe__menu)) {
+          net.mikesimone.backchannel.VoiceTranscriber.show(requireContext(), getSelectedConversationMessage().messageRecord)
+          finishActionMode()
+        }
+      )
+    }
+
     // BACKCHANNEL: remind me about this message
     if (menuState.shouldShowDetailsAction()) {
       items.add(
@@ -4538,6 +4548,7 @@ class ConversationFragment :
         ConversationReactionOverlay.Action.UNPIN_MESSAGE -> handleUnpinMessage(conversationMessage.messageRecord.id)
         ConversationReactionOverlay.Action.STAR_MESSAGE -> handleStarMessages(setOf(conversationMessage.messageRecord.id))
         ConversationReactionOverlay.Action.UNSTAR_MESSAGE -> handleUnstarMessages(setOf(conversationMessage.messageRecord.id))
+        ConversationReactionOverlay.Action.TRANSCRIBE -> net.mikesimone.backchannel.VoiceTranscriber.show(requireContext(), conversationMessage.messageRecord) // BACKCHANNEL
         ConversationReactionOverlay.Action.REMIND_ME -> net.mikesimone.backchannel.MessageReminders.pick(requireContext(), conversationMessage.messageRecord.id, conversationMessage.messageRecord.threadId) // BACKCHANNEL
       }
     }

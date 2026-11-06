@@ -17,13 +17,13 @@ import androidx.core.app.NotificationManagerCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.json.JSONArray
 import org.json.JSONObject
+import org.signal.core.util.ServiceUtil
 import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.conversation.ConversationIntents
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.service.ExportedBroadcastReceiver
-import org.thoughtcrime.securesms.util.ServiceUtil
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 

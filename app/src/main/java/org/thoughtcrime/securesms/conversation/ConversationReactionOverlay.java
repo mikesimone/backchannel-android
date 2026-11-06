@@ -733,6 +733,11 @@ public final class ConversationReactionOverlay extends FrameLayout {
       items.add(new ActionItem(R.drawable.symbol_star_outline_24, getResources().getString(R.string.conversation_selection__menu_unstar), () -> handleActionItemClicked(Action.UNSTAR_MESSAGE)));
     }
 
+    // BACKCHANNEL: transcribe a voice message on the phone
+    if (menuState.shouldShowDetailsAction() && net.mikesimone.backchannel.VoiceTranscriber.canTranscribe(conversationMessage.getMessageRecord())) {
+      items.add(new ActionItem(org.signal.core.ui.R.drawable.symbol_mic_24, getResources().getString(R.string.Transcribe__menu), () -> handleActionItemClicked(Action.TRANSCRIBE)));
+    }
+
     // BACKCHANNEL: remind me about this message
     if (menuState.shouldShowDetailsAction()) {
       items.add(new ActionItem(R.drawable.symbol_bell_24, getResources().getString(R.string.Reminders__menu), () -> handleActionItemClicked(Action.REMIND_ME)));
@@ -930,6 +935,7 @@ public final class ConversationReactionOverlay extends FrameLayout {
     UNPIN_MESSAGE,
     STAR_MESSAGE,
     UNSTAR_MESSAGE,
-    REMIND_ME // BACKCHANNEL
+    REMIND_ME, // BACKCHANNEL
+    TRANSCRIBE // BACKCHANNEL
   }
 }
