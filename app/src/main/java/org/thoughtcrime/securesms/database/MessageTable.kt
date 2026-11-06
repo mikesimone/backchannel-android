@@ -3029,7 +3029,9 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
       retrieved.type == MessageType.IDENTITY_VERIFIED ||
       retrieved.type == MessageType.IDENTITY_UPDATE
 
-    val read = silent || retrieved.type == MessageType.EXPIRATION_UPDATE
+    // BACKCHANNEL: a note arriving in Note to Self (from another of your devices) is never unread
+    val noteToSelf = threads.getRecipientIdForThreadId(threadId) == Recipient.self().id
+    val read = silent || noteToSelf || retrieved.type == MessageType.EXPIRATION_UPDATE
 
     val contentValues = contentValuesOf(
       DATE_SENT to retrieved.sentTimeMillis,
@@ -3160,6 +3162,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
       !retrieved.storyType.isStory &&
       isNotStoryGroupReply &&
       !silent &&
+      !noteToSelf && // BACKCHANNEL
       editedMessage == null
     ) {
       val incrementUnreadMentions = retrieved.mentions.isNotEmpty() && retrieved.mentions.any { it.recipientId == Recipient.self().id }
