@@ -738,6 +738,11 @@ public final class ConversationReactionOverlay extends FrameLayout {
       items.add(new ActionItem(org.signal.core.ui.R.drawable.symbol_mic_24, getResources().getString(R.string.Transcribe__menu), () -> handleActionItemClicked(Action.TRANSCRIBE)));
     }
 
+    // BACKCHANNEL: translate a message on the phone
+    if (menuState.shouldShowDetailsAction() && net.mikesimone.backchannel.MessageTranslator.canTranslate(conversationMessage.getMessageRecord())) {
+      items.add(new ActionItem(org.signal.core.ui.R.drawable.symbol_text_24, getResources().getString(R.string.Translate__menu), () -> handleActionItemClicked(Action.TRANSLATE)));
+    }
+
     // BACKCHANNEL: remind me about this message
     if (menuState.shouldShowDetailsAction()) {
       items.add(new ActionItem(R.drawable.symbol_bell_24, getResources().getString(R.string.Reminders__menu), () -> handleActionItemClicked(Action.REMIND_ME)));
@@ -936,6 +941,7 @@ public final class ConversationReactionOverlay extends FrameLayout {
     STAR_MESSAGE,
     UNSTAR_MESSAGE,
     REMIND_ME, // BACKCHANNEL
-    TRANSCRIBE // BACKCHANNEL
+    TRANSCRIBE, // BACKCHANNEL
+    TRANSLATE // BACKCHANNEL
   }
 }
