@@ -22,7 +22,6 @@ import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.database.MediaTable
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
-import org.thoughtcrime.securesms.keyvalue.SignalStore
 import org.thoughtcrime.securesms.mms.OutgoingMessage
 import org.thoughtcrime.securesms.mms.QuoteModel
 import org.thoughtcrime.securesms.mms.SlideFactory
@@ -34,7 +33,7 @@ import kotlin.time.Duration.Companion.seconds
  * Reply to one photo or video of a multi-photo message (Backchannel, Mike
  * 2026-11-04). Signal can only react to or quote a whole message. From the
  * photo viewer, this sends a reply that quotes the original message and
- * carries that one photo again, with an emoji or a comment as its text, so
+ * carries that one photo again, with your comment as its text, so
  * every Signal app shows which photo it was about.
  *
  * The quote names the chosen photo as its thumbnail too. Signal-Android
@@ -50,7 +49,7 @@ object PhotoReply {
     return item.attachment != null && item.threadId > 0 && item.messageId > 0
   }
 
-  /** Shows the emoji row and comment box for [item]. */
+  /** Shows the comment box for [item]. (Emoji row removed: Mike 2026-11-06 didn't like it.) */
   @JvmStatic
   fun show(fragment: Fragment, item: MediaTable.MediaRecord) {
     val context = fragment.requireContext()
@@ -70,31 +69,9 @@ object PhotoReply {
       }
     )
 
-    val emojiRow = LinearLayout(context).apply {
-      orientation = LinearLayout.HORIZONTAL
-      gravity = Gravity.CENTER_HORIZONTAL
-    }
-    SignalStore.emoji.reactions.forEach { emoji ->
-      emojiRow.addView(
-        TextView(context).apply {
-          text = emoji
-          setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
-          setPadding(dp(context, 8))
-          contentDescription = emoji
-          setOnClickListener {
-            dialog.dismiss()
-            send(context.applicationContext, item, emoji)
-          }
-        },
-        LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-      )
-    }
-    root.addView(emojiRow)
-
     val commentRow = LinearLayout(context).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER_VERTICAL
-      setPadding(0, pad / 2, 0, 0)
     }
     val input = EditText(context).apply {
       setHint(R.string.PhotoReply__comment_hint)
