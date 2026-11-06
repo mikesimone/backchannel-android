@@ -73,5 +73,5 @@
   <string name="KeywordAlerts__title">Keyword alerts</string>
   <string name="KeywordAlerts__summary_none">Get notified in muted chats when someone uses words you pick</string>
   <string name="KeywordAlerts__explain">Muted chats still notify you when a new message contains one of these words. Separate words with commas.</string>
-  <string name="KeywordAlerts__hint">Mike, dinner, urgent</string>
+  <string name="KeywordAlerts__hint">your name, dinner, urgent</string>
 </resources>
