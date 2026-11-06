@@ -14,7 +14,9 @@ import androidx.biometric.BiometricManager
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.Navigation
 import androidx.navigation.fragment.NavHostFragment
+import net.mikesimone.backchannel.AutoAcceptKeys
 import org.signal.core.ui.util.ThemeUtil
+import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.ChangePassphraseDialogFragment
 import org.thoughtcrime.securesms.PassphraseActivity
@@ -52,6 +54,10 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
 
   private lateinit var viewModel: PrivacySettingsViewModel
 
+  // BACKCHANNEL: the auto-accept switch lives outside the view model's state, so redraw by hand
+  private var mappingAdapter: MappingAdapter? = null
+  private var lastState: PrivacySettingsState? = null
+
   private val incognitoSummary: CharSequence by lazy {
     SpannableStringBuilder(getString(R.string.preferences__this_setting_is_not_a_guarantee))
       .append(" ")
@@ -75,7 +81,9 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
     val factory = PrivacySettingsViewModel.Factory(sharedPreferences, repository)
     viewModel = ViewModelProvider(this, factory)[PrivacySettingsViewModel::class.java]
 
+    mappingAdapter = adapter
     viewModel.state.observe(viewLifecycleOwner) { state ->
+      lastState = state
       adapter.submitList(getConfiguration(state).toMappingModelList())
     }
   }
@@ -111,6 +119,21 @@ class PrivacySettingsFragment : DSLSettingsFragment(R.string.preferences__privac
         isEnabled = SignalStore.account.isPrimaryDevice,
         onClick = {
           viewModel.setTypingIndicatorsEnabled(!state.typingIndicators)
+        }
+      )
+
+      // BACKCHANNEL: accept changed safety numbers without asking (off by default)
+      switchPref(
+        title = DSLSettingsText.from(R.string.Backchannel__auto_accept_safety_numbers),
+        summary = DSLSettingsText.from(R.string.Backchannel__auto_accept_safety_numbers_summary),
+        isChecked = AutoAcceptKeys.isEnabled(requireContext()),
+        onClick = {
+          val enable = !AutoAcceptKeys.isEnabled(requireContext())
+          AutoAcceptKeys.setEnabled(requireContext(), enable)
+          if (enable) {
+            SignalExecutors.BOUNDED.execute { AutoAcceptKeys.acceptPending() }
+          }
+          lastState?.let { mappingAdapter?.submitList(getConfiguration(it).toMappingModelList()) }
         }
       )
 

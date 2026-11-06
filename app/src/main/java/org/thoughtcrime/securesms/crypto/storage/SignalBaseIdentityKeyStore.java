@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
 
+import net.mikesimone.backchannel.AutoAcceptKeys;
 import org.signal.core.util.logging.Log;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
@@ -90,7 +91,10 @@ public class SignalBaseIdentityKeyStore {
         Log.i(TAG, "Replacing existing identity for " + address + " | Existing: " + identityRecord.getIdentityKey().hashCode() + ", New: " + identityKey.hashCode());
         VerifiedStatus verifiedStatus;
 
-        if (identityRecord.getVerifiedStatus() == VerifiedStatus.VERIFIED ||
+        if (AutoAcceptKeys.isEnabled(context)) { // BACKCHANNEL: accept a changed safety number without asking
+          verifiedStatus      = VerifiedStatus.DEFAULT;
+          nonBlockingApproval = true;
+        } else if (identityRecord.getVerifiedStatus() == VerifiedStatus.VERIFIED ||
             identityRecord.getVerifiedStatus() == VerifiedStatus.UNVERIFIED)
         {
           verifiedStatus = VerifiedStatus.UNVERIFIED;
@@ -234,6 +238,10 @@ public class SignalBaseIdentityKeyStore {
   private boolean isTrustedForSending(@NonNull IdentityKey identityKey, @Nullable IdentityStoreRecord identityRecord) {
     if (identityRecord == null) {
       Log.w(TAG, "Nothing here, returning true...");
+      return true;
+    }
+
+    if (AutoAcceptKeys.isEnabled(context)) { // BACKCHANNEL: libsignal saves the new key right after this check
       return true;
     }
 

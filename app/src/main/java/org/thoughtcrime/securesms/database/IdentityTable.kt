@@ -26,6 +26,7 @@ import org.signal.core.util.delete
 import org.signal.core.util.exists
 import org.signal.core.util.firstOrNull
 import org.signal.core.util.logging.Log
+import org.signal.core.util.readToList
 import org.signal.core.util.requireBoolean
 import org.signal.core.util.requireInt
 import org.signal.core.util.requireLong
@@ -86,6 +87,16 @@ class IdentityTable internal constructor(context: Context?, databaseHelper: Sign
     } else {
       null
     }
+  }
+
+  /** BACKCHANNEL: addresses whose key changed after you verified them, for AutoAcceptKeys. */
+  fun getUnverifiedAddresses(): List<String> {
+    return readableDatabase
+      .select(ADDRESS)
+      .from(TABLE_NAME)
+      .where("$VERIFIED = ?", VerifiedStatus.UNVERIFIED.toInt())
+      .run()
+      .readToList { it.requireNonNullString(ADDRESS) }
   }
 
   fun getIdentityStoreRecord(addressName: String): IdentityStoreRecord? {

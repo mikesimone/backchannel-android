@@ -75,16 +75,16 @@
         app:layout_constraintEnd_toEndOf="@+id/welcome_continue_button"
         app:layout_constraintStart_toStartOf="@+id/welcome_continue_button" />
 
-    <com.google.android.material.button.MaterialButton
+    <!-- BACKCHANNEL: no "Link device" button. Linking to Signal fails; moving over is backup + restore. -->
+    <TextView
         android:id="@+id/link"
-        style="@style/Signal.Widget.Button.Large.Tonal"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:layout_marginBottom="48dp"
-        app:backgroundTint="?attr/colorSurfaceContainer"
-        android:text="@string/RegistrationActivity_link_device"
+        android:layout_marginBottom="40dp"
+        android:gravity="center"
+        android:text="@string/Backchannel__welcome_move_over"
+        android:textAppearance="@style/Signal.Text.BodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/welcome_transfer_or_restore"
         app:layout_constraintStart_toStartOf="@+id/welcome_transfer_or_restore" />

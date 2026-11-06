@@ -59,7 +59,7 @@ class WelcomeFragment : LoggingFragment(R.layout.fragment_registration_welcome_v
     binding.welcomeTransferOrRestore.setOnClickListener { onRestoreOrTransferClicked() }
     binding.welcomeTransferOrRestore.visible = !sharedViewModel.isReregister
 
-    binding.link.setOnClickListener { onLinkDeviceClicked() }
+    // BACKCHANNEL: binding.link is a how-to-move-over note, not a Link device button
 
     childFragmentManager.setFragmentResultListener(RestoreWelcomeBottomSheet.REQUEST_KEY, viewLifecycleOwner) { requestKey, bundle ->
       if (requestKey == RestoreWelcomeBottomSheet.REQUEST_KEY) {

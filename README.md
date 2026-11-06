@@ -26,11 +26,12 @@ Backchannel replaces Signal on your phone. To move over with your chats:
 2. Install Backchannel, choose to restore from a backup, pick the backup
    file and enter the code.
 
-Registering your number in Backchannel signs the Signal app on that phone
-out. You can also register a number fresh, with no history.
+3. Disable or uninstall Signal on that phone. Restoring registers your
+   number in Backchannel, which signs the Signal app out.
 
-Linking Backchannel to Signal on another phone (like Signal Desktop) fails
-with "Network error" for now, so use a backup instead.
+You can also register a number fresh, with no history. Backchannel doesn't
+offer linking to Signal on another phone (like Signal Desktop does): it
+didn't work, so the welcome screen has no Link device button.
 
 ## Notifications
 
