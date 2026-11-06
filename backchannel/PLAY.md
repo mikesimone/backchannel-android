@@ -6,11 +6,10 @@ workflow pushes it when those files change; the `Release` workflow's
 `Google Play` job uploads each release's AAB to the closed testing track (`alpha`; Mike skipped internal testing).
 Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 
-Console links (developer 5289514165945262444, app 4974267608264545983):
-- App content: https://play.google.com/console/u/0/developers/5289514165945262444/app/4974267608264545983/app-content/overview
-  (menu: Monitor and improve > Policy and programs > App content)
-- App access (reviewer instructions): https://play.google.com/console/u/0/developers/5289514165945262444/app/4974267608264545983/app-content/testing-credentials
-- Publishing overview (send changes for review): https://play.google.com/console/u/0/developers/5289514165945262444/app/4974267608264545983/publishing
+Console: developer 5289514165945262444, app 4974267608264545983
+(https://play.google.com/console/u/0/developers/5289514165945262444/app/4974267608264545983/releases/overview).
+App access (reviewer instructions): use the Console's search box (type "App access");
+guessed app-content URLs redirect elsewhere.
 
 ## One-time steps in Play Console (Mike)
 
