@@ -19,13 +19,23 @@ Environment:
   LISTEN             host:port, default 127.0.0.1:8096
   CODE_MAX_AGE_MIN   ignore codes older than this, default 15
   CLEANUP_HOURS      trash texts older than this, default 24
+  ALERT_POLL_SEC     how often the watcher checks for new codes, default 15
+  ALERT_URL          page URL quoted in the alert, default https://review.mikesimone.net
+
+The watcher DMs Mike on Slack (Six's Ops Bot, noc-in-a-box slack-notify.sh)
+the moment a new code reaches the number, falling back to the Ops Bot's
+Signal account if Slack fails. Texts are searched in:anywhere: something in
+the mailbox moves them to Trash within minutes, and Gmail search skips Trash
+by default, so on 2026-11-06 the page never saw the reviewer's codes.
 """
 
 import base64
 import hmac
 import html
+import json
 import os
 import re
+import subprocess
 import threading
 import time
 from email.utils import parsedate_to_datetime
@@ -46,11 +56,19 @@ PASSWORD = os.environ["REVIEW_PASSWORD"]
 HOST, PORT = os.environ.get("LISTEN", "127.0.0.1:8096").rsplit(":", 1)
 CODE_MAX_AGE = int(os.environ.get("CODE_MAX_AGE_MIN", "15")) * 60
 CLEANUP_HOURS = int(os.environ.get("CLEANUP_HOURS", "24"))
+ALERT_POLL = int(os.environ.get("ALERT_POLL_SEC", "15"))
+ALERT_URL = os.environ.get("ALERT_URL", "https://review.mikesimone.net")
+SLACK_NOTIFY = "/home/msimone/noc-in-a-box/slack-notify.sh"
+SIGNAL_API = "http://127.0.0.1:8080/v2/send"
+OPS_BOT_NUMBER = "+14402522983"
+MIKE_NUMBER = "+17028798487"
 
 # Voice forwards texts to NUMBER from "<NUMBER>.<sender>.<id>@txt.voice.google.com".
 # Gmail search can't match the number inside that address, so search all Voice
 # texts and check the sender here.
-QUERY = "from:txt.voice.google.com"
+# in:anywhere because the texts get moved to Trash soon after they arrive.
+QUERY = "in:anywhere from:txt.voice.google.com"
+CLEANUP_QUERY = "from:txt.voice.google.com"  # not already in Trash
 CODE_RE = re.compile(r"\b(\d{3})[- ]?(\d{3})\b")
 
 
@@ -112,8 +130,9 @@ def to_number(msg):
     return re.search(rf"(?<!\d){NUMBER}\.\d+\.[^@]+@txt\.voice\.google\.com", sender) is not None
 
 
-def latest_code():
-    """(code, age_seconds) of the newest Signal code, or None."""
+def recent_codes():
+    """[(msg_id, code, age_seconds)] of Signal codes newer than CODE_MAX_AGE, newest first."""
+    out = []
     listing = gmail.get("messages", q=f"{QUERY} newer_than:1d", maxResults=20)
     for ref in listing.get("messages", []):
         msg = gmail.get(f"messages/{ref['id']}", format="full")
@@ -121,20 +140,66 @@ def latest_code():
             continue
         age = time.time() - int(msg["internalDate"]) / 1000
         if age > CODE_MAX_AGE:
-            return None  # newest first, so everything after is older
+            break  # newest first, so everything after is older
         text = body_text(msg["payload"])
         if "signal" not in text.lower():
             continue
         m = CODE_RE.search(text)
         if m:
-            return m.group(1) + m.group(2), age
-    return None
+            out.append((ref["id"], m.group(1) + m.group(2), age))
+    return out
+
+
+def latest_code():
+    """(code, age_seconds) of the newest Signal code, or None."""
+    codes = recent_codes()
+    return (codes[0][1], codes[0][2]) if codes else None
+
+
+def notify(text):
+    """DM Mike on Slack as Six's Ops Bot; Signal only if Slack fails."""
+    try:
+        if subprocess.run([SLACK_NOTIFY, "six", text], timeout=60).returncode == 0:
+            return
+    except Exception as e:
+        print(f"slack notify failed: {e}", flush=True)
+    try:
+        requests.post(SIGNAL_API, timeout=20, json={
+            "message": text, "account": OPS_BOT_NUMBER, "number": OPS_BOT_NUMBER,
+            "recipients": [MIKE_NUMBER]}).raise_for_status()
+    except Exception as e:
+        print(f"signal notify failed: {e}", flush=True)
+
+
+def watch_loop():
+    """Ping Mike as soon as a new code reaches the reviewer number."""
+    seen = set()
+    first = True
+    while True:
+        try:
+            for msg_id, code, age in reversed(recent_codes()):
+                if msg_id in seen:
+                    continue
+                seen.add(msg_id)
+                # After a restart, don't re-announce codes we probably already sent.
+                if first and age > 120:
+                    continue
+                pretty = f"+1 {NUMBER[1:4]}-{NUMBER[4:7]}-{NUMBER[7:]}" if len(NUMBER) == 11 else f"+{NUMBER}"
+                notify(f"📲 Play reviewer is registering Backchannel: Signal code "
+                       f"{code[:3]}-{code[3:]} just reached {pretty} "
+                       f"({int(age // 60)} min {int(age % 60)} s ago). "
+                       f"It's on the review page: {ALERT_URL}")
+                print(f"alerted for message {msg_id}", flush=True)
+            first = False
+        except Exception as e:
+            print(f"watch failed: {e}", flush=True)
+        time.sleep(ALERT_POLL)
 
 
 def cleanup():
     if not gmail.can_modify:
         return
-    listing = gmail.get("messages", q=f"{QUERY} older_than:{CLEANUP_HOURS}h", maxResults=100)
+    listing = gmail.get("messages", q=f"{CLEANUP_QUERY} older_than:{CLEANUP_HOURS}h", maxResults=100)
     ids = [m["id"] for m in listing.get("messages", [])
            if to_number(gmail.get(f"messages/{m['id']}", format="metadata", metadataHeaders="From"))]
     if ids:
@@ -229,5 +294,6 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     threading.Thread(target=cleanup_loop, daemon=True).start()
+    threading.Thread(target=watch_loop, daemon=True).start()
     print(f"listening on {HOST}:{PORT}, mailbox {MAILBOX}, number +{NUMBER}", flush=True)
     ThreadingHTTPServer((HOST, int(PORT)), Handler).serve_forever()
