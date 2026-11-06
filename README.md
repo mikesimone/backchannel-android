@@ -63,7 +63,7 @@ updater.
 - The **Sync Molly** workflow merges each new Molly release daily, tags
   it `<molly tag>-bc1`, and builds a signed release. A conflict opens an
   issue instead.
-- Version codes are Molly's times ten plus `backchannelRevision` from
+- Version codes are Molly's times 100 plus `backchannelRevision` (0-99) from
   `app/gradle.properties`, so a Backchannel-only release on the same Molly
   version still upgrades.
 
