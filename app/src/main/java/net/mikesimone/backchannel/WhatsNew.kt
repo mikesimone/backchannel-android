@@ -8,8 +8,9 @@ import org.thoughtcrime.securesms.R
 
 /**
  * "What's new" pop-up (Backchannel, Mike 2026-11-03): shown once after each
- * install or update, from the chat list. For now it lists everything since the
- * first release, newest first; the text lives in R.string.WhatsNew__body.
+ * install or update, from the chat list. The text lives in R.string.WhatsNew__body:
+ * since version 12 (Mike 2026-11-07) a "New in this version" section, then one
+ * "Everything Backchannel adds" list of every earlier feature (not per version).
  */
 object WhatsNew {
 

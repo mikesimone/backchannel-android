@@ -34,6 +34,10 @@ guessed app-content URLs redirect elsewhere.
   app once, Play takes only drafts; the job then falls back to a draft (a
   warning in the run) and Mike sends that first one for review by hand.
 - Release notes: `fastlane/metadata/android/en-US/changelogs/default.txt`.
+- In-app What's New (`WhatsNew__body` in `strings_backchannel_main.xml`), from version 12
+  (Mike 2026-11-07): two sections only, "New in this version" and one "Everything Backchannel
+  adds" list of all earlier features (not per version). Each release: move the previous
+  version's items into the big list, write the new ones.
   Update it in the commit that ships a feature; if it didn't change since the
   previous tag (daily Molly merges), the job uses a generic "latest Signal and
   Molly fixes" note.
