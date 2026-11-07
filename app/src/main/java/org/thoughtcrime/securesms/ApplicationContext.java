@@ -194,6 +194,7 @@ public class ApplicationContext extends Application implements AppForegroundObse
     DynamicTheme.setDefaultDayNightMode(this);
     ScreenLockController.enableAutoLock(TextSecurePreferences.isBiometricScreenLockEnabled(this));
     AppDependencies.installDependencyProviders();
+    net.mikesimone.backchannel.KeyboardGuard.install(this); // BACKCHANNEL: no input box behind the keyboard
 
     initializePassphraseLock();
     cleanCacheDir();
