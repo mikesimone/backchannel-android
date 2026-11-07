@@ -8,7 +8,8 @@ Both run only once the `PLAY_SERVICE_ACCOUNT_JSON` secret is set.
 
 Console: developer 5289514165945262444, app 4974267608264545983
 (https://play.google.com/console/u/0/developers/5289514165945262444/app/4974267608264545983/releases/overview).
-App access (reviewer instructions): use the Console's search box (type "App access");
+Reviewer instructions: Google renamed "App access" to **Sign-in details** (2026): search the Console
+for "sign-in details" or Monitor and improve > Policy and programs > App content;
 guessed app-content URLs redirect elsewhere.
 
 ## One-time steps in Play Console (Mike)
