@@ -38,6 +38,9 @@ guessed app-content URLs redirect elsewhere.
   (Mike 2026-11-07): two sections only, "New in this version" and one "Everything Backchannel
   adds" list of all earlier features (not per version). Each release: move the previous
   version's items into the big list, write the new ones.
+- Every feature in What's New is also in the store listing's "WHAT BACKCHANNEL ADDS"
+  (`fastlane/metadata/android/en-US/full_description.txt`, grouped, max 4000 chars; Mike
+  2026-11-07). Add it to both in the same commit.
   Update it in the commit that ships a feature; if it didn't change since the
   previous tag (daily Molly merges), the job uses a generic "latest Signal and
   Molly fixes" note.
