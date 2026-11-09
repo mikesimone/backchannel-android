@@ -35,6 +35,9 @@ guessed app-content URLs redirect elsewhere.
   warning in the run) and Mike sends that first one for review by hand.
   **First approval: bc11 published on closed testing (alpha) 2026-11-09**, so
   from bc12 on each tag goes straight to review with no draft fallback.
+- Production access: 12 testers opted in continuously since about 2026-11-02 (7 days on
+  2026-11-09), so "Apply for production" unlocks about 2026-11-16 if none drop out. Applying
+  asks questions about the closed test (how testers used it, feedback, changes made).
 - Release notes: `fastlane/metadata/android/en-US/changelogs/default.txt`.
 - In-app What's New (`WhatsNew__body` in `strings_backchannel_main.xml`), from version 12
   (Mike 2026-11-07): two sections only, "New in this version" and one "Everything Backchannel
