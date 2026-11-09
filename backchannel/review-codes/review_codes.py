@@ -16,6 +16,9 @@ Environment:
   MAILBOX            mailbox to read, e.g. mike@mikesimone.net
   REVIEW_NUMBER      the reviewer number, digits only with country code
   REVIEW_PASSWORD    password for HTTP basic auth (user "reviewer")
+  REVIEW_SIGNAL_PIN  the reviewer account's Signal PIN, shown on the page (optional).
+                     Registration lock is on, so "Skip" doesn't work and the
+                     reviewer needs the real PIN after the code (Mike 2026-11-09).
   LISTEN             host:port, default 127.0.0.1:8096
   CODE_MAX_AGE_MIN   ignore codes older than this, default 15
   CLEANUP_HOURS      trash texts older than this, default 24
@@ -58,6 +61,7 @@ CODE_MAX_AGE = int(os.environ.get("CODE_MAX_AGE_MIN", "15")) * 60
 CLEANUP_HOURS = int(os.environ.get("CLEANUP_HOURS", "24"))
 ALERT_POLL = int(os.environ.get("ALERT_POLL_SEC", "15"))
 ALERT_URL = os.environ.get("ALERT_URL", "https://review.mikesimone.net")
+SIGNAL_PIN = os.environ.get("REVIEW_SIGNAL_PIN", "").strip()
 SLACK_NOTIFY = "/home/msimone/noc-in-a-box/slack-notify.sh"
 SIGNAL_API = "http://127.0.0.1:8080/v2/send"
 OPS_BOT_NUMBER = "+14402522983"
@@ -289,6 +293,10 @@ class Handler(BaseHTTPRequestHandler):
                 content = ("<p>No code in the last 15 minutes.</p>"
                            "<p>In Backchannel, enter the number above and choose to get the code "
                            "by SMS. It shows up here within about a minute.</p>")
+        if SIGNAL_PIN:
+            content += ('<p>After the code, Signal asks for a PIN. Enter this one '
+                        '(don\'t skip or create a new one):</p>'
+                        f'<div class="code">{html.escape(SIGNAL_PIN)}</div>')
         self.send(200, PAGE.format(number=NUMBER, content=content))
 
 
