@@ -1,1 +1,1 @@
-Fixed: typing boxes never hide behind the keyboard, including when you share a link from another app or forward a message. Also new lately: Remind me (long-press a message), keyword alerts in muted chats, offline transcribe and translate, Immich attachments, and replies to one photo with photos, videos, GIFs, files or a sticker.
+New: when you reply to one photo, you can search for a GIF right from the reply box. What's New now shows what this version adds, then everything Backchannel adds in one list. The store listing covers every feature too.
