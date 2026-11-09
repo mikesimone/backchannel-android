@@ -1,6 +1,8 @@
 package net.mikesimone.backchannel
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.text.InputType
@@ -14,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatEditText
@@ -39,6 +42,7 @@ import org.thoughtcrime.securesms.database.StickerTable
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.database.model.StickerRecord
 import org.thoughtcrime.securesms.dependencies.AppDependencies
+import org.thoughtcrime.securesms.giph.ui.GiphyActivity
 import org.thoughtcrime.securesms.mms.OutgoingMessage
 import org.thoughtcrime.securesms.mms.PartAuthority
 import org.thoughtcrime.securesms.mms.QuoteModel
@@ -48,6 +52,7 @@ import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.sms.MessageSender
 import org.thoughtcrime.securesms.stickers.StickerLocator
 import org.thoughtcrime.securesms.util.MediaUtil
+import org.thoughtcrime.securesms.util.RemoteConfig
 import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 import org.signal.core.ui.R as CoreUiR
@@ -69,6 +74,10 @@ import org.signal.core.ui.R as CoreUiR
  * the chosen photo. A sticker or a file can't share a message with photos, so
  * each follows as its own message that replies to the photo reply (same as
  * Backchannel web).
+ *
+ * GIF search (Mike's parity rule, matching Backchannel web F54, 2026-11-09):
+ * the GIF button opens Signal's own GIF search in pick-only mode; the GIF rides
+ * in the same message as the chosen photo, as a looping GIF video.
  */
 object PhotoReply {
 
@@ -76,7 +85,26 @@ object PhotoReply {
 
   private val KEYBOARD_TYPES = arrayOf("image/*", "video/*")
 
-  private data class Extra(val uri: Uri, val mimeType: String)
+  private data class Extra(val uri: Uri, val mimeType: String, val gif: Boolean = false, val width: Int = 0, val height: Int = 0)
+
+  /** Signal's GIF search, returning the picked GIF instead of opening the send editor. */
+  private object PickGif : ActivityResultContract<Unit, Extra?>() {
+    override fun createIntent(context: Context, input: Unit): Intent {
+      return Intent(context, GiphyActivity::class.java).putExtra(GiphyActivity.EXTRA_PICK_ONLY, true)
+    }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): Extra? {
+      val uri = intent?.data
+      if (resultCode != Activity.RESULT_OK || uri == null) return null
+      return Extra(
+        uri = uri,
+        mimeType = intent.type ?: MediaUtil.VIDEO_MP4,
+        gif = true,
+        width = intent.getIntExtra(GiphyActivity.RESULT_WIDTH, 0),
+        height = intent.getIntExtra(GiphyActivity.RESULT_HEIGHT, 0)
+      )
+    }
+  }
 
   @JvmStatic
   fun canReply(item: MediaTable.MediaRecord): Boolean {
@@ -146,7 +174,14 @@ object PhotoReply {
     val launchers = mutableListOf<ActivityResultLauncher<*>>()
     val pickFiles = registry.register("photo_reply_files_" + UUID.randomUUID(), ActivityResultContracts.GetMultipleContents()) { addUris(it) }
     val pickImmich = registry.register("photo_reply_immich_" + UUID.randomUUID(), ImmichPickerActivity.Contract) { addUris(it) }
+    val pickGif = registry.register("photo_reply_gif_" + UUID.randomUUID(), PickGif) { gif ->
+      if (gif != null) {
+        extras += gif
+        refreshAdded()
+      }
+    }
     launchers += pickFiles
+    launchers += pickGif
     launchers += pickImmich
 
     val commentRow = LinearLayout(context).apply {
@@ -211,6 +246,9 @@ object PhotoReply {
     }
     button(CoreUiR.drawable.symbol_plus_24, R.string.PhotoReply__attach) { pickFiles.launch("*/*") }
     button(R.drawable.symbol_album_24, R.string.AttachmentKeyboard_immich) { pickImmich.launch(Unit) }
+    if (RemoteConfig.gifSearchAvailable) {
+      button(R.drawable.ic_gif_24, R.string.PhotoReply__gif) { pickGif.launch(Unit) }
+    }
     button(CoreUiR.drawable.symbol_sticker_24, R.string.PhotoReply__sticker) {
       pickSticker(context) {
         sticker = it
@@ -356,7 +394,13 @@ object PhotoReply {
           val files = extras.filterNot { isVisual(it.mimeType) }
           val attachments = mutableListOf<Attachment>(slide.asAttachment())
           visual.forEach { extra ->
-            SlideFactory.getSlide(context, extra.mimeType, extra.uri, 0, 0, null)?.let { attachments += it.asAttachment() }
+            val extraSlide = if (extra.gif) {
+              val size = PartAuthority.getAttachmentSize(context, extra.uri) ?: MediaUtil.getMediaSize(context, extra.uri)
+              SlideFactory.MediaType.VIDEO.createSlide(context, extra.uri, null, extra.mimeType, null, size, extra.width, extra.height, true, null)
+            } else {
+              SlideFactory.getSlide(context, extra.mimeType, extra.uri, 0, 0, null)
+            }
+            extraSlide?.let { attachments += it.asAttachment() }
           }
 
           val sentAt = System.currentTimeMillis()

@@ -7,7 +7,7 @@ Backchannel is not made by Signal and is not affiliated with Signal Messenger LL
 WHAT BACKCHANNEL ADDS
 Conversations
 • Reply privately: answer someone's group message in a 1:1 chat, with their message quoted.
-• Reply to one photo of a multi-photo message, with your own photos, videos, GIFs, files or a sticker.
+• Reply to one photo of a multi-photo message, with your own photos, videos, GIFs (or search for one), files or a sticker.
 • Forward to as many chats as you like, with your own message on top and real @mentions in groups.
 • Send one poll to many chats at once.
 • Sticker replies, and double-tap a message to react.

@@ -40,6 +40,10 @@ public class GiphyActivity extends PassphraseRequiredActivity implements Keyboar
   public static final String EXTRA_RECIPIENT_ID = "extra_recipient_id";
   public static final String EXTRA_TRANSPORT    = "extra_transport";
   public static final String EXTRA_TEXT         = "extra_text";
+  /** Backchannel: return the chosen GIF (data = blob uri, plus width/height) instead of opening the send editor. */
+  public static final String EXTRA_PICK_ONLY    = "extra_pick_only";
+  public static final String RESULT_WIDTH       = "result_width";
+  public static final String RESULT_HEIGHT      = "result_height";
 
   private static final int MEDIA_SENDER = 12;
 
@@ -123,6 +127,16 @@ public class GiphyActivity extends PassphraseRequiredActivity implements Keyboar
     String                 mimeType  = MediaUtil.getMimeType(this, success.getBlobUri());
     if (mimeType == null) {
       mimeType = mediaType.toFallbackMimeType();
+    }
+
+    if (getIntent().getBooleanExtra(EXTRA_PICK_ONLY, false)) {
+      Intent result = new Intent();
+      result.setDataAndType(success.getBlobUri(), mimeType);
+      result.putExtra(RESULT_WIDTH, success.getWidth());
+      result.putExtra(RESULT_HEIGHT, success.getHeight());
+      setResult(RESULT_OK, result);
+      finish();
+      return;
     }
 
     Media media = new Media(success.getBlobUri(), mimeType, 0, success.getWidth(), success.getHeight(), 0, 0, false,  true, null, null, null, null);
