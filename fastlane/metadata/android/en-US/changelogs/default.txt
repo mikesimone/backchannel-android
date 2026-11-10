@@ -1,1 +1,1 @@
-New: when you reply to one photo, you can search for a GIF right from the reply box. What's New now shows what this version adds, then everything Backchannel adds in one list. The store listing covers every feature too.
+Fixed: searching for someone when forwarding or sharing. The search box and the list of chats no longer get covered by the message bar while the keyboard is open.

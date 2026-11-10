@@ -15,12 +15,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -207,9 +203,11 @@ class MultiselectForwardFragment :
             isSplitPane = isSplitPane,
             modifier = Modifier
               .fillMaxWidth()
-              // BACKCHANNEL: navigation bar or keyboard, whichever is taller, so
-              // "Add a message" (share sheet, forward) never sits behind the keyboard.
-              .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+              // BACKCHANNEL: no keyboard padding here (bc11 had it): the bottom sheet already
+              // sits above the keyboard, and this bar's height becomes the list's bottom
+              // padding, so it squashed the search box and hid the list. KeyboardGuard
+              // lifts the bar only where it is really covered.
+              .navigationBarsPadding()
           )
         }
       }
