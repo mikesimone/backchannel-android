@@ -225,6 +225,7 @@ class MessageNotification(threadRecipient: Recipient, record: MessageRecord) : N
   override val authorRecipient: Recipient = record.fromRecipient.resolve()
   override val isNewNotification: Boolean = notifiedTimestamp == 0L && !record.isEditMessage
   val hasSelfMention = record.hasSelfMention() || (record is MmsMessageRecord && record.quote?.author == Recipient.self().id)
+  val isSentSilently: Boolean = !record.isOutgoing && net.mikesimone.backchannel.SendSilently.isMarked(record.body) // BACKCHANNEL: send silently
 
   private var thumbnailInfo: ThumbnailInfo = NotificationThumbnails.getWithoutModifying(this)
 

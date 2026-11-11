@@ -66,6 +66,7 @@ sealed class NotificationBuilder(protected val context: Context) {
   abstract fun setDeleteIntent(deleteIntent: PendingIntent?)
   abstract fun setSortKey(sortKey: String)
   abstract fun setOnlyAlertOnce(onlyAlertOnce: Boolean)
+  abstract fun setSilent(silent: Boolean) // BACKCHANNEL: send silently
   abstract fun setGroupSummary(isGroupSummary: Boolean)
   abstract fun setSubText(subText: String)
   abstract fun setPriority(priority: Int)
@@ -472,6 +473,11 @@ sealed class NotificationBuilder(protected val context: Context) {
 
     override fun setOnlyAlertOnce(onlyAlertOnce: Boolean) {
       builder.setOnlyAlertOnce(onlyAlertOnce)
+    }
+
+    // BACKCHANNEL: send silently - no sound, vibration or heads-up, still in the shade
+    override fun setSilent(silent: Boolean) {
+      builder.setSilent(silent)
     }
 
     override fun setPriority(priority: Int) {

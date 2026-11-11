@@ -4901,13 +4901,25 @@ class ConversationFragment :
         inputPanel.onSaveRecordDraft()
       }
 
-      ScheduleMessageContextMenu.show(sendButton, (requireView() as ViewGroup)) { time ->
+      // BACKCHANNEL: "Send silently" joins the schedule menu (not while editing a message)
+      val silentAction = if (!inputPanel.isInEditMode) Runnable { sendSilently() } else null
+      ScheduleMessageContextMenu.show(sendButton, (requireView() as ViewGroup), silentAction) { time ->
         if (time == -1L) {
           showSchedule(childFragmentManager)
         } else {
           sendMessage(scheduledDate = time)
         }
       }
+    }
+  }
+
+  // BACKCHANNEL: send silently - the text gets the invisible marker; an empty compose box behaves like a normal send
+  private fun sendSilently() {
+    val body = net.mikesimone.backchannel.Markdown.passBeforeSend(composeText.editableText).toString().trim()
+    if (body.isBlank() && !attachmentManager.isAttachmentPresent) {
+      sendMessage(body = body)
+    } else {
+      sendMessage(body = net.mikesimone.backchannel.SendSilently.mark(body))
     }
   }
 

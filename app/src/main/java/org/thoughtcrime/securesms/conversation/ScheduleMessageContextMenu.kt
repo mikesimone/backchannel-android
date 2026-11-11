@@ -20,10 +20,11 @@ class ScheduleMessageContextMenu {
     private val presetHours = arrayOf(8, 12, 18, 21)
 
     @JvmStatic
-    fun show(anchor: View, container: ViewGroup, action: (Long) -> Unit): SignalContextMenu {
+    fun show(anchor: View, container: ViewGroup, silentAction: Runnable? = null /* BACKCHANNEL: send silently */, action: (Long) -> Unit): SignalContextMenu {
       val currentTime = System.currentTimeMillis()
       val scheduledTimes = getNextScheduleTimes(currentTime)
-      val actionItems = scheduledTimes.map {
+      val silentItems = if (silentAction != null) listOf(ActionItem(R.drawable.symbol_bell_slash_24, net.mikesimone.backchannel.SendSilently.menuTitle(anchor.context), action = silentAction)) else emptyList() // BACKCHANNEL
+      val actionItems = silentItems + scheduledTimes.map {
         if (it > 0) {
           ActionItem(getIconForTime(it), DateUtils.getScheduledMessageDateString(anchor.context, it)) {
             action(it)

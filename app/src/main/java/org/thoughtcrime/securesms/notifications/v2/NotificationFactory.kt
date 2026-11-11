@@ -114,7 +114,7 @@ object NotificationFactory {
     val threadsThatNewlyAlerted: MutableSet<ConversationId> = mutableSetOf()
 
     state.conversations.find { it.thread == visibleThread }?.let { conversation ->
-      if (conversation.hasNewNotifications()) {
+      if (conversation.hasNewNotifications() && !net.mikesimone.backchannel.SendSilently.isSilent(conversation)) { // BACKCHANNEL: send silently
         Log.internal().i(TAG, "Thread is visible, notifying in thread. notificationId: ${conversation.notificationId}")
         notifyInThread(context, conversation.recipient, lastAudibleNotification)
       }
@@ -166,7 +166,7 @@ object NotificationFactory {
 
     state.conversations.forEach { conversation ->
       if (conversation.thread == visibleThread) {
-        if (conversation.hasNewNotifications()) {
+        if (conversation.hasNewNotifications() && !net.mikesimone.backchannel.SendSilently.isSilent(conversation)) { // BACKCHANNEL: send silently
           Log.internal().i(TAG, "Thread is visible, notifying in thread. notificationId: ${conversation.notificationId}")
           notifyInThread(context, conversation.recipient, lastAudibleNotification)
         }
@@ -260,6 +260,7 @@ object NotificationFactory {
       setPriority(TextSecurePreferences.getNotificationPriority(context))
       setLights()
       setAlarms(conversation.recipient)
+      if (net.mikesimone.backchannel.SendSilently.isSilent(conversation)) setSilent(true) // BACKCHANNEL: send silently
       setTicker(conversation.mostRecentNotification.getStyledPrimaryText(context, true))
       setBubbleMetadata(conversation, if (targetThread == conversation.thread) defaultBubbleState else BubbleUtil.BubbleState.HIDDEN)
     }
