@@ -835,6 +835,20 @@ class ConversationSettingsFragment :
         )
       }
 
+      // BACKCHANNEL: hide group updates caused by regular members, for this group (Default / Hide / Show)
+      if (state.recipient.isPushV2Group) {
+        clickPref(
+          title = DSLSettingsText.from(R.string.GroupUpdateFilter__chat_title),
+          summary = DSLSettingsText.from(net.mikesimone.backchannel.GroupUpdateFilter.chatSettingLabel(requireContext(), state.recipient.id)),
+          icon = DSLSettingsIcon.from(R.drawable.symbol_group_24),
+          onClick = {
+            net.mikesimone.backchannel.GroupUpdateFilter.showChatSettingDialog(requireContext(), state.recipient.id) {
+              viewModel.state.value?.let { latest -> settingsAdapter?.submitList(getConfiguration(latest).toMappingModelList()) }
+            }
+          }
+        )
+      }
+
       if (!state.recipient.isReleaseNotes && SignalStore.labs.starredMessages) {
         clickPref(
           title = DSLSettingsText.from(R.string.ConversationSettingsFragment__starred_messages),

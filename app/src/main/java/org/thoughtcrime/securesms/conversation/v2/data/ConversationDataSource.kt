@@ -96,6 +96,7 @@ class ConversationDataSource(
   override fun load(start: Int, length: Int, totalSize: Int, cancellationSignal: PagedDataSource.CancellationSignal): List<ConversationElement> {
     val stopwatch = Stopwatch(title = "load($start, $length), thread $threadId", decimalPlaces = 2)
     var records: MutableList<MessageRecord> = ArrayList(length)
+    net.mikesimone.backchannel.GroupUpdateFilter.prime(localContext, threadRecipient) // BACKCHANNEL: current admins, for hiding non-admin group updates
 
     MessageTable.mmsReaderFor(SignalDatabase.messages.getConversation(threadId, start.toLong(), length.toLong(), filterCollapsed = true))
       .use { reader ->

@@ -238,6 +238,9 @@ public final class ConversationUpdateItem extends FrameLayout
     presentCollapsedHead(hasWallpaper, conversationMessage.getMessageRecord().getCollapsedState());
 
     updateSelectedState();
+
+    // BACKCHANNEL: hide group updates caused by regular (non-admin) members
+    setVisibility(net.mikesimone.backchannel.GroupUpdateFilter.shouldHide(getContext(), messageRecord, conversationRecipient) ? GONE : VISIBLE);
   }
 
   @Override

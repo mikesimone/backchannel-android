@@ -269,6 +269,21 @@ private fun ChatsSettingsScreen(
         )
       }
 
+      // BACKCHANNEL: hide group updates caused by regular members. Each group can override this in its chat settings.
+      item {
+        val context = LocalContext.current
+        var hideGroupUpdates by remember { mutableStateOf(net.mikesimone.backchannel.GroupUpdateFilter.isEnabledForAll(context)) }
+        Rows.ToggleRow(
+          text = stringResource(R.string.GroupUpdateFilter__hide_all),
+          label = stringResource(R.string.GroupUpdateFilter__hide_all_summary),
+          checked = hideGroupUpdates,
+          onCheckChanged = {
+            net.mikesimone.backchannel.GroupUpdateFilter.setEnabledForAll(context, it)
+            hideGroupUpdates = it
+          }
+        )
+      }
+
       // BACKCHANNEL: transcribe incoming voice messages on this phone and show the text under them
       if (Build.VERSION.SDK_INT >= 33) {
         item {
