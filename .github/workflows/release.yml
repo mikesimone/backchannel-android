@@ -301,8 +301,19 @@ jobs:
           name: apk-two
           path: apk-two
 
-      - name: Upload APK to GitHub release
-        run: gh release upload "$TAG_REF" ./apk-two/*.apk --clobber
+      # Its own pre-release ("<tag>-two"), never the main release: Obtainium
+      # ignores pre-releases by default, so existing Backchannel users still see
+      # exactly one APK per release and are never asked which to install.
+      - name: Publish Backchannel 2 pre-release
+        run: |
+          sha=$(git rev-list -n1 "$TAG_REF")
+          if gh release view "$TAG_REF-two" >/dev/null 2>&1; then
+            gh release upload "$TAG_REF-two" ./apk-two/*.apk --clobber
+          else
+            gh release create "$TAG_REF-two" ./apk-two/*.apk --target "$sha" --prerelease \
+              --title "Backchannel 2 $TAG_REF" \
+              --notes "Backchannel 2: the same app as $TAG_REF under its own package, for a second number. See the README."
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
 
