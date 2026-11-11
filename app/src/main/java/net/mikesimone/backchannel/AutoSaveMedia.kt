@@ -22,8 +22,10 @@ import org.thoughtcrime.securesms.util.SaveAttachmentUtil
  *
  * Off by default. One switch in Settings > Chats; each chat can say Default,
  * Always or Never in its chat settings (stored on this phone only). Never saves
- * your own sent media, view-once media, disappearing messages, stories,
- * stickers, GIFs, or anything from a locked chat.
+ * your own sent media, view-once media, stories, stickers, GIFs, or anything
+ * from a locked chat. Disappearing-message chats ARE saved (Mike 2026-11-11:
+ * people turn the timer on to save phone space, not for secrecy; matches
+ * Backchannel Web).
  */
 object AutoSaveMedia {
 
@@ -127,7 +129,7 @@ object AutoSaveMedia {
     val uri = attachment.uri ?: return
 
     val record = SignalDatabase.messages.getMessageRecordOrNull(messageId) as? MmsMessageRecord ?: return
-    if (record.isOutgoing || record.isViewOnce || record.expiresIn > 0 || record.storyType.isStory) return
+    if (record.isOutgoing || record.isViewOnce || record.storyType.isStory) return
 
     val threadRecipientId = SignalDatabase.threads.getRecipientIdForThreadId(record.threadId) ?: return
     if (ChatLock.isLocked(context, threadRecipientId) || !isEnabled(context, threadRecipientId)) return
