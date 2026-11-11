@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.LruCache
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.viewModels
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -47,6 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,6 +92,11 @@ import java.io.File
  * Backchannel (Mike 2026-11-04): pick photos and videos straight from the
  * user's Immich server. Returns local file URIs of the downloaded items; the
  * caller runs them through the normal media editor. See [ImmichClient].
+ *
+ * Backchannel, Mike 2026-11-11: the connect screen signs in through the
+ * server's own login page ([ImmichLoginActivity]), with an API key as the
+ * advanced option, and takes an optional address at home. A 401 later shows
+ * "Signed out of Immich" with a button to sign in again.
  */
 class ImmichPickerActivity : AppCompatActivity() {
 
@@ -136,6 +145,11 @@ class ImmichPickerViewModel : ViewModel() {
   private lateinit var appContext: Context
 
   var connected by mutableStateOf(false)
+  var signedOut by mutableStateOf(false)
+  var auth by mutableStateOf<ImmichClient.Auth?>(null)
+  var savedServer by mutableStateOf("")
+  var savedHome by mutableStateOf("")
+  private var pending: ImmichClient.Addresses? = null
   var tab by mutableStateOf(0)
   var error by mutableStateOf<String?>(null)
   var busy by mutableStateOf(false)
@@ -159,18 +173,29 @@ class ImmichPickerViewModel : ViewModel() {
     if (::appContext.isInitialized) return
     appContext = context.applicationContext
     connected = ImmichClient.isConnected(appContext)
+    auth = ImmichClient.auth(appContext)
+    savedServer = ImmichClient.server(appContext).orEmpty()
+    savedHome = ImmichClient.home(appContext).orEmpty()
     viewModelScope.launch(Dispatchers.IO) { ImmichPickerActivity.downloadDir(appContext).listFiles()?.forEach { it.delete() } }
-    if (connected) reloadAssets()
+    if (connected) {
+      viewModelScope.launch {
+        busy = true
+        // Home or main address: decided fresh each time the picker opens.
+        withContext(Dispatchers.IO) { ImmichClient.refreshRoute(appContext) }
+        reloadAssets()
+      }
+    }
   }
 
-  fun connect(server: String, key: String) {
+  fun connectWithKey(server: String, home: String, key: String) {
     busy = true
     error = null
     viewModelScope.launch {
       try {
-        withContext(Dispatchers.IO) { ImmichClient.connect(appContext, server, key) }
-        connected = true
-        reloadAssets()
+        withContext(Dispatchers.IO) {
+          ImmichClient.connectWithKey(appContext, ImmichClient.addresses(appContext, server, home), key)
+        }
+        onConnected()
       } catch (e: Exception) {
         Log.w(TAG, "Couldn't connect to Immich", e)
         error = message(e)
@@ -180,15 +205,86 @@ class ImmichPickerViewModel : ViewModel() {
     }
   }
 
-  fun disconnect() {
-    ImmichClient.disconnect(appContext)
+  /** Checks the addresses before the login page opens. Returns the address to sign in at, or null (with [error] set). */
+  fun beginSignIn(server: String, home: String): String? {
+    error = null
+    return try {
+      ImmichClient.addresses(appContext, server, home).also { pending = it }.main
+    } catch (e: Exception) {
+      error = message(e)
+      null
+    }
+  }
+
+  /** Signs in again at the saved addresses after a 401. */
+  fun beginSignInAgain(): String? {
+    if (savedServer.isEmpty()) return null
+    pending = ImmichClient.Addresses(savedServer, savedHome.ifEmpty { null })
+    return savedServer
+  }
+
+  /** [token] from [ImmichLoginActivity], or null if the user backed out. */
+  fun finishSignIn(token: String?) {
+    val addresses = pending ?: return
+    if (token == null) return
+    busy = true
+    error = null
+    viewModelScope.launch {
+      try {
+        withContext(Dispatchers.IO) { ImmichClient.connectWithSession(appContext, addresses, token) }
+        onConnected()
+      } catch (e: Exception) {
+        Log.w(TAG, "Couldn't sign in to Immich", e)
+        error = message(e)
+      } finally {
+        busy = false
+      }
+    }
+  }
+
+  private fun onConnected() {
+    connected = true
+    signedOut = false
+    auth = ImmichClient.auth(appContext)
+    savedServer = ImmichClient.server(appContext).orEmpty()
+    savedHome = ImmichClient.home(appContext).orEmpty()
+    thumbs.evictAll()
+    albums.clear()
+    reloadAssets()
+  }
+
+  /** Signs out and forgets the token or key and both addresses. */
+  fun signOut() {
+    viewModelScope.launch { withContext(Dispatchers.IO) { ImmichClient.signOut(appContext) } }
     connected = false
+    signedOut = false
+    auth = null
+    savedServer = ""
+    savedHome = ""
+    error = null
     assets.clear()
     albums.clear()
     selected.clear()
     openAlbum = null
     thumbs.evictAll()
   }
+
+  /** The server turned down the token or key. */
+  private fun onUnauthorized(e: Exception) {
+    if (auth == ImmichClient.Auth.SESSION) {
+      signedOut = true
+    } else {
+      ImmichClient.forgetCredentials(appContext)
+      connected = false
+      error = message(e)
+    }
+    assets.clear()
+    albums.clear()
+    selected.clear()
+    openAlbum = null
+  }
+
+  private fun isUnauthorized(e: Exception) = e is ImmichClient.ImmichException && e.unauthorized
 
   fun search() {
     activeQuery = query.trim().ifEmpty { null }
@@ -232,7 +328,7 @@ class ImmichPickerViewModel : ViewModel() {
       } catch (e: Exception) {
         Log.w(TAG, "Couldn't load Immich assets", e)
         nextPage = null
-        error = if (q != null) appContext.getString(R.string.Immich__search_failed) else message(e)
+        if (isUnauthorized(e)) onUnauthorized(e) else error = if (q != null) appContext.getString(R.string.Immich__search_failed) else message(e)
       } finally {
         busy = false
       }
@@ -249,7 +345,7 @@ class ImmichPickerViewModel : ViewModel() {
         error = null
       } catch (e: Exception) {
         Log.w(TAG, "Couldn't load Immich albums", e)
-        error = message(e)
+        if (isUnauthorized(e)) onUnauthorized(e) else error = message(e)
       } finally {
         busy = false
       }
@@ -288,7 +384,7 @@ class ImmichPickerViewModel : ViewModel() {
         onDone(uris)
       } catch (e: Exception) {
         Log.w(TAG, "Couldn't download from Immich", e)
-        error = message(e)
+        if (isUnauthorized(e)) onUnauthorized(e) else error = message(e)
       } finally {
         sending = false
       }
@@ -307,6 +403,8 @@ class ImmichPickerViewModel : ViewModel() {
 @Composable
 private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, onDone: (List<Uri>) -> Unit) {
   var menu by remember { mutableStateOf(false) }
+  val signIn = rememberLauncherForActivityResult(ImmichLoginActivity.Contract) { token -> viewModel.finishSignIn(token) }
+  val startSignIn: (String?) -> Unit = { server -> if (server != null) signIn.launch(server) }
 
   BackHandler(enabled = viewModel.openAlbum != null) { viewModel.open(null) }
 
@@ -326,10 +424,10 @@ private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, 
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
               DropdownMenuItem(
-                text = { Text(stringResource(R.string.Immich__disconnect)) },
+                text = { Text(stringResource(R.string.Immich__sign_out)) },
                 onClick = {
                   menu = false
-                  viewModel.disconnect()
+                  viewModel.signOut()
                 }
               )
             }
@@ -354,8 +452,10 @@ private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, 
         .padding(padding)
         .fillMaxSize()
     ) {
-      if (!viewModel.connected) {
-        SetupScreen(viewModel)
+      if (viewModel.signedOut) {
+        SignedOutScreen(viewModel) { startSignIn(viewModel.beginSignInAgain()) }
+      } else if (!viewModel.connected) {
+        SetupScreen(viewModel) { server, home -> startSignIn(viewModel.beginSignIn(server, home)) }
       } else {
         if (viewModel.openAlbum == null) {
           TabRow(selectedTabIndex = viewModel.tab) {
@@ -379,35 +479,80 @@ private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, 
 }
 
 @Composable
-private fun SetupScreen(viewModel: ImmichPickerViewModel) {
-  var server by remember { mutableStateOf("") }
+private fun SetupScreen(viewModel: ImmichPickerViewModel, onSignIn: (server: String, home: String) -> Unit) {
+  var server by remember { mutableStateOf(viewModel.savedServer) }
+  var home by remember { mutableStateOf(viewModel.savedHome) }
   var key by remember { mutableStateOf("") }
-  Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  var useKey by remember { mutableStateOf(false) }
+  Column(
+    modifier = Modifier
+      .verticalScroll(rememberScrollState())
+      .padding(16.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp)
+  ) {
     Text(stringResource(R.string.Immich__setup_intro), style = MaterialTheme.typography.bodyMedium)
     OutlinedTextField(
       value = server,
       onValueChange = { server = it },
       label = { Text(stringResource(R.string.Immich__server)) },
-      placeholder = { Text("photos.example.com") },
+      placeholder = { Text("https://photos.example.com") },
       singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
       modifier = Modifier.fillMaxWidth()
     )
     OutlinedTextField(
-      value = key,
-      onValueChange = { key = it },
-      label = { Text(stringResource(R.string.Immich__api_key)) },
+      value = home,
+      onValueChange = { home = it },
+      label = { Text(stringResource(R.string.Immich__home_address)) },
+      placeholder = { Text("http://192.168.1.10:2283") },
+      supportingText = { Text(stringResource(R.string.Immich__home_address_help)) },
       singleLine = true,
-      visualTransformation = PasswordVisualTransformation(),
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-      keyboardActions = KeyboardActions(onDone = { viewModel.connect(server, key) }),
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = if (useKey) ImeAction.Next else ImeAction.Done),
+      keyboardActions = KeyboardActions(onDone = { if (server.isNotBlank()) onSignIn(server, home) }),
       modifier = Modifier.fillMaxWidth()
     )
-    Text(stringResource(R.string.Immich__api_key_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    Button(onClick = { viewModel.connect(server, key) }, enabled = !viewModel.busy && server.isNotBlank() && key.isNotBlank()) {
-      if (viewModel.busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.Immich__connect))
+    if (!useKey) {
+      Button(onClick = { onSignIn(server, home) }, enabled = !viewModel.busy && server.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+        if (viewModel.busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.Immich__sign_in))
+      }
+      Text(stringResource(R.string.Immich__sign_in_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      TextButton(onClick = { useKey = true }) { Text(stringResource(R.string.Immich__use_api_key)) }
+    } else {
+      OutlinedTextField(
+        value = key,
+        onValueChange = { key = it },
+        label = { Text(stringResource(R.string.Immich__api_key)) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { viewModel.connectWithKey(server, home, key) }),
+        modifier = Modifier.fillMaxWidth()
+      )
+      Text(stringResource(R.string.Immich__api_key_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      Button(onClick = { viewModel.connectWithKey(server, home, key) }, enabled = !viewModel.busy && server.isNotBlank() && key.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+        if (viewModel.busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.Immich__connect))
+      }
+      TextButton(onClick = { useKey = false }) { Text(stringResource(R.string.Immich__use_sign_in)) }
     }
+  }
+}
+
+@Composable
+private fun SignedOutScreen(viewModel: ImmichPickerViewModel, onSignIn: () -> Unit) {
+  Column(
+    modifier = Modifier
+      .fillMaxSize()
+      .padding(24.dp),
+    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+    horizontalAlignment = Alignment.CenterHorizontally
+  ) {
+    Text(stringResource(R.string.Immich__signed_out), style = MaterialTheme.typography.titleMedium)
+    viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    Button(onClick = onSignIn, enabled = !viewModel.busy) {
+      if (viewModel.busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.Immich__sign_in_again))
+    }
+    TextButton(onClick = { viewModel.signOut() }) { Text(stringResource(R.string.Immich__sign_out)) }
   }
 }
 

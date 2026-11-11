@@ -9,8 +9,11 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import org.signal.core.util.logging.Log
+import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.dependencies.AppDependencies
 import java.io.File
 import java.io.IOException
@@ -19,23 +22,34 @@ import java.util.concurrent.TimeUnit
 /**
  * Backchannel (Mike 2026-11-04): talks to the user's own Immich server, so
  * Immich users can attach photos without Google Photos. Android's photo picker
- * only offers cloud apps the phone maker signed up, and Immich can't act as a
- * picker for other apps, so Backchannel reads the library itself.
+ * only offers cloud apps the phone maker signed up, so Backchannel reads the
+ * library itself.
  *
- * Signs in with an Immich API key (works with password and OAuth accounts).
- * The server address and key are stored on this phone only, in app-private
- * preferences. Uses the deprecated-but-supported page-based search so it works
- * with Immich 1.x through 3.x.
+ * Backchannel, Mike 2026-11-11: signs in the way the server offers. The usual
+ * path is the server's own web login page (password or any OAuth/SSO provider,
+ * see [ImmichLoginActivity]), which gives a session token sent as
+ * `Authorization: Bearer`. An API key (`x-api-key`) still works as an advanced
+ * option. An optional "address at home" is used automatically when it answers
+ * (see [ImmichRouter]); it may be plain http, which is allowed for that one
+ * address only. Addresses and the token or key stay on this phone, in
+ * app-private preferences. Uses the deprecated-but-supported page-based search
+ * so it works with Immich 1.x through 3.x.
  */
 object ImmichClient {
 
+  private val TAG = Log.tag(ImmichClient::class.java)
+
   private const val PREFS = "backchannel_immich"
   private const val KEY_SERVER = "server"
+  private const val KEY_HOME = "home"
   private const val KEY_API_KEY = "api_key"
+  private const val KEY_SESSION = "session_token"
   private const val PAGE_SIZE = 120
 
   /** Formats Signal can send as-is. Others (HEIC, RAW...) go out as Immich's JPEG preview. */
   private val SENDABLE_IMAGES = setOf("image/jpeg", "image/png", "image/gif", "image/webp")
+
+  enum class Auth { SESSION, API_KEY }
 
   data class Asset(val id: String, val isVideo: Boolean, val mimeType: String, val duration: String?)
 
@@ -43,44 +57,179 @@ object ImmichClient {
 
   data class Page(val assets: List<Asset>, val nextPage: Int?)
 
-  class ImmichException(message: String, val code: Int = 0) : IOException(message)
+  class ImmichException(message: String, val code: Int = 0) : IOException(message) {
+    val unauthorized: Boolean get() = code == 401
+  }
+
+  /** The two addresses after checking what the user typed. */
+  data class Addresses(val main: String, val home: String?)
+
+  @Volatile
+  private var appContext: Context? = null
 
   private val client: OkHttpClient by lazy {
     AppDependencies.okHttpClient.newBuilder()
       .connectTimeout(15, TimeUnit.SECONDS)
       .readTimeout(60, TimeUnit.SECONDS)
+      .addInterceptor { chain ->
+        // Plain http only ever goes to the user's own home address.
+        val request = chain.request()
+        val home = appContext?.let { home(it) }
+        if (!ImmichUrls.cleartextAllowed(request.url, home)) throw IOException("Plain http is only used for the address at home")
+        chain.proceed(request)
+      }
       .build()
   }
 
-  private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+  private val pingClient: OkHttpClient by lazy {
+    client.newBuilder()
+      .connectTimeout(1, TimeUnit.SECONDS)
+      .readTimeout(1, TimeUnit.SECONDS)
+      .callTimeout(2, TimeUnit.SECONDS)
+      .retryOnConnectionFailure(false)
+      .build()
+  }
 
-  fun isConnected(context: Context): Boolean = server(context) != null && apiKey(context) != null
+  private fun prefs(context: Context) = context.applicationContext.also { appContext = it }.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+  fun isConnected(context: Context): Boolean = server(context) != null && auth(context) != null
 
   fun server(context: Context): String? = prefs(context).getString(KEY_SERVER, null)
 
-  private fun apiKey(context: Context): String? = prefs(context).getString(KEY_API_KEY, null)
+  fun home(context: Context): String? = prefs(context).getString(KEY_HOME, null)
 
-  fun disconnect(context: Context) {
-    prefs(context).edit().clear().apply()
+  fun auth(context: Context): Auth? {
+    val p = prefs(context)
+    return when {
+      p.getString(KEY_SESSION, null) != null -> Auth.SESSION
+      p.getString(KEY_API_KEY, null) != null -> Auth.API_KEY
+      else -> null
+    }
   }
 
-  /** "photos.example.com", "https://photos.example.com/" or ".../api" all become "https://photos.example.com". */
-  fun normalizeServer(input: String): String? {
-    var s = input.trim().trimEnd('/')
-    if (s.isEmpty()) return null
-    if (!s.contains("://")) s = "https://$s"
-    if (s.endsWith("/api")) s = s.removeSuffix("/api")
-    return s.toHttpUrlOrNull()?.toString()?.trimEnd('/')
-  }
-
-  /** Checks the address and key, and saves them if they work. Returns the account name. */
+  /**
+   * Signs out: ends the server session (if it was a sign-in, best effort) and
+   * forgets the token or key and both addresses.
+   */
   @WorkerThread
-  fun connect(context: Context, serverInput: String, key: String): String {
-    val server = normalizeServer(serverInput) ?: throw ImmichException("That server address doesn't look right")
-    val apiKey = key.trim().ifEmpty { throw ImmichException("Paste an API key") }
-    val me = JSONObject(get(server, apiKey, "users/me"))
-    prefs(context).edit().putString(KEY_SERVER, server).putString(KEY_API_KEY, apiKey).apply()
+  fun signOut(context: Context) {
+    val p = prefs(context)
+    val server = p.getString(KEY_SERVER, null)
+    val token = p.getString(KEY_SESSION, null)
+    if (server != null && token != null) {
+      try {
+        val request = Request.Builder().url(url(server, "auth/logout")).header("Authorization", "Bearer $token")
+          .post("{}".toRequestBody("application/json".toMediaType())).build()
+        pingClient.newBuilder().callTimeout(5, TimeUnit.SECONDS).build().newCall(request).execute().close()
+      } catch (e: Exception) {
+        Log.w(TAG, "Couldn't end the Immich session", e)
+      }
+    }
+    p.edit().clear().apply()
+    ImmichRouter.invalidate()
+  }
+
+  /** Forgets only the token or key, keeping the addresses for signing in again. */
+  fun forgetCredentials(context: Context) {
+    prefs(context).edit().remove(KEY_SESSION).remove(KEY_API_KEY).apply()
+  }
+
+  /**
+   * Checks what the user typed. The main address must be https (it is also the
+   * one used to sign in); the home address may be http, and without a scheme
+   * it is taken as http.
+   */
+  fun addresses(context: Context, serverInput: String, homeInput: String): Addresses {
+    val main = ImmichUrls.normalize(serverInput) ?: throw ImmichException(context.getString(R.string.Immich__bad_address))
+    if (!ImmichUrls.isHttps(main)) throw ImmichException(context.getString(R.string.Immich__needs_https))
+    val home = if (homeInput.isBlank()) {
+      null
+    } else {
+      ImmichUrls.normalize(homeInput, defaultScheme = "http") ?: throw ImmichException(context.getString(R.string.Immich__bad_home_address))
+    }
+    return Addresses(main, home?.takeIf { it != main })
+  }
+
+  /** Checks the address and API key, and saves them if they work. Returns the account name. */
+  @WorkerThread
+  fun connectWithKey(context: Context, addresses: Addresses, key: String): String {
+    val apiKey = key.trim().ifEmpty { throw ImmichException(context.getString(R.string.Immich__paste_key)) }
+    val me = me(addresses.main, "x-api-key", apiKey, Auth.API_KEY)
+    save(context, addresses, KEY_API_KEY, apiKey)
+    return me
+  }
+
+  /** Checks a session token from signing in, and saves it if it works. Returns the account name. */
+  @WorkerThread
+  fun connectWithSession(context: Context, addresses: Addresses, token: String): String {
+    val me = me(addresses.main, "Authorization", "Bearer $token", Auth.SESSION)
+    save(context, addresses, KEY_SESSION, token)
+    return me
+  }
+
+  private fun save(context: Context, addresses: Addresses, key: String, value: String) {
+    val editor = prefs(context).edit().clear().putString(KEY_SERVER, addresses.main).putString(key, value)
+    if (addresses.home != null) editor.putString(KEY_HOME, addresses.home)
+    editor.apply()
+    ImmichRouter.invalidate()
+  }
+
+  /** GET /users/me, or /user/me on old servers. */
+  private fun me(server: String, header: String, value: String, auth: Auth): String {
+    fun get(path: String): String {
+      val request = Request.Builder().url(url(server, path)).header(header, value).header("Accept", "application/json").get().build()
+      return client.newCall(request).execute().use { text(it, auth) }
+    }
+    val json = try {
+      get("users/me")
+    } catch (e: ImmichException) {
+      if (e.code == 404) get("user/me") else throw e
+    }
+    val me = JSONObject(json)
     return me.optString("name").ifBlank { me.optString("email") }
+  }
+
+  /**
+   * Finishes an OAuth sign-in the WebView was sent back from: the full
+   * `<server>/auth/login?code=...&state=...` URL goes to POST /oauth/callback,
+   * with the WebView's cookies for the server (newer Immich keeps the OAuth
+   * state and PKCE verifier there). Returns the session token.
+   */
+  @WorkerThread
+  fun finishOAuth(server: String, returnUrl: String, cookies: String?): String {
+    val request = Request.Builder().url(url(server, "oauth/callback"))
+      .header("Accept", "application/json")
+      .apply { if (!cookies.isNullOrBlank()) header("Cookie", cookies) }
+      .post(JSONObject().put("url", returnUrl).toString().toRequestBody("application/json".toMediaType()))
+      .build()
+    val json = JSONObject(client.newCall(request).execute().use { text(it, Auth.SESSION) })
+    return json.optString("accessToken").ifBlank { throw ImmichException("Immich didn't send a sign-in token") }
+  }
+
+  /** Probes the home address now (called as an Immich screen opens). */
+  @WorkerThread
+  fun refreshRoute(context: Context) {
+    val main = server(context) ?: return
+    val home = home(context) ?: return
+    ImmichRouter.invalidate()
+    ImmichRouter.base(context, main, home, ::ping)
+  }
+
+  /** True if [server] answers Immich's ping: /server/ping, or /server-info/ping on old versions. */
+  @WorkerThread
+  fun ping(server: String): Boolean {
+    for (path in listOf("server/ping", "server-info/ping")) {
+      try {
+        val request = Request.Builder().url(url(server, path)).header("Accept", "application/json").get().build()
+        pingClient.newCall(request).execute().use { response ->
+          if (response.isSuccessful) return ImmichUrls.isPong(response.body.string())
+          if (response.code != 404) return false
+        }
+      } catch (e: IOException) {
+        return false
+      }
+    }
+    return false
   }
 
   /** Newest first. [albumId] limits it to one album; [query] uses Immich's smart search. */
@@ -125,16 +274,20 @@ object ImmichClient {
   }
 
   @WorkerThread
-  fun thumbnail(context: Context, assetId: String): ByteArray = bytes(context, "assets/$assetId/thumbnail?size=thumbnail")
+  fun thumbnail(context: Context, assetId: String): ByteArray {
+    call(context, "assets/$assetId/thumbnail?size=thumbnail") { it.get() }.use { response ->
+      if (!response.isSuccessful) throw error(response.code, auth(context))
+      return response.body.bytes()
+    }
+  }
 
   /** Downloads [asset] into [dir] in a form Signal can send, and returns the file. */
   @WorkerThread
   fun download(context: Context, asset: Asset, dir: File): File {
     val usePreview = !asset.isVideo && asset.mimeType.lowercase() !in SENDABLE_IMAGES
     val path = if (usePreview) "assets/${asset.id}/thumbnail?size=preview" else "assets/${asset.id}/original"
-    val request = request(context, path).get().build()
-    client.newCall(request).execute().use { response ->
-      if (!response.isSuccessful) throw ImmichException("Immich said ${response.code}", response.code)
+    call(context, path) { it.get() }.use { response ->
+      if (!response.isSuccessful) throw error(response.code, auth(context))
       val body = response.body
       val mime = (if (usePreview) response.header("Content-Type") else asset.mimeType)?.substringBefore(';')?.trim() ?: "image/jpeg"
       val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: if (asset.isVideo) "mp4" else "jpg"
@@ -156,47 +309,59 @@ object ImmichClient {
     return "$server/api/$path".toHttpUrlOrNull() ?: throw ImmichException("Bad server address")
   }
 
-  private fun request(context: Context, path: String): Request.Builder {
-    val server = server(context) ?: throw ImmichException("Not connected to Immich")
-    val key = apiKey(context) ?: throw ImmichException("Not connected to Immich")
-    return Request.Builder().url(url(server, path)).header("x-api-key", key)
+  /**
+   * Runs a request against the address [ImmichRouter] picks. If the home
+   * address fails to connect, it switches to the main address (until the next
+   * network change) and tries once more there.
+   */
+  private fun call(context: Context, path: String, method: (Request.Builder) -> Request.Builder): Response {
+    val main = server(context) ?: throw ImmichException("Not connected to Immich")
+    val home = home(context)
+    val base = ImmichRouter.base(context, main, home, ::ping)
+    try {
+      return client.newCall(method(request(context, base, path)).build()).execute()
+    } catch (e: IOException) {
+      if (home == null || base != home) throw e
+      Log.w(TAG, "Home address failed, using the main address", e)
+      ImmichRouter.useMain(main, home)
+      return client.newCall(method(request(context, main, path)).build()).execute()
+    }
   }
 
-  private fun get(server: String, key: String, path: String): String {
-    val request = Request.Builder().url(url(server, path)).header("x-api-key", key).header("Accept", "application/json").get().build()
-    return execute(request)
+  private fun request(context: Context, base: String, path: String): Request.Builder {
+    val p = prefs(context)
+    val builder = Request.Builder().url(url(base, path))
+    val token = p.getString(KEY_SESSION, null)
+    val key = p.getString(KEY_API_KEY, null)
+    return when {
+      token != null -> builder.header("Authorization", "Bearer $token")
+      key != null -> builder.header("x-api-key", key)
+      else -> throw ImmichException("Not connected to Immich", 401)
+    }
   }
 
-  private fun get(context: Context, path: String): String = execute(request(context, path).header("Accept", "application/json").get().build())
+  private fun get(context: Context, path: String): String {
+    return call(context, path) { it.header("Accept", "application/json").get() }.use { text(it, auth(context)) }
+  }
 
   private fun post(context: Context, path: String, body: JSONObject): String {
-    val request = request(context, path)
-      .header("Accept", "application/json")
-      .post(body.toString().toRequestBody("application/json".toMediaType()))
-      .build()
-    return execute(request)
+    return call(context, path) { it.header("Accept", "application/json").post(body.toString().toRequestBody("application/json".toMediaType())) }
+      .use { text(it, auth(context)) }
   }
 
-  private fun bytes(context: Context, path: String): ByteArray {
-    client.newCall(request(context, path).get().build()).execute().use { response ->
-      if (!response.isSuccessful) throw ImmichException("Immich said ${response.code}", response.code)
-      return response.body.bytes()
-    }
+  private fun text(response: Response, auth: Auth?): String {
+    val text = response.body.string()
+    if (!response.isSuccessful) throw error(response.code, auth)
+    return text
   }
 
-  private fun execute(request: Request): String {
-    client.newCall(request).execute().use { response ->
-      val text = response.body.string()
-      if (!response.isSuccessful) {
-        val message = when (response.code) {
-          401 -> "Immich didn't accept that API key"
-          403 -> "That API key is missing a permission (needs asset and album read, view and download)"
-          404 -> "No Immich server found at that address"
-          else -> "Immich said ${response.code}"
-        }
-        throw ImmichException(message, response.code)
-      }
-      return text
+  private fun error(code: Int, auth: Auth?): ImmichException {
+    val message = when (code) {
+      401 -> if (auth == Auth.API_KEY) "Immich didn't accept that API key" else "Signed out of Immich"
+      403 -> if (auth == Auth.API_KEY) "That API key is missing a permission (needs asset and album read, view and download)" else "Immich refused that (403)"
+      404 -> "No Immich server found at that address"
+      else -> "Immich said $code"
     }
+    return ImmichException(message, code)
   }
 }

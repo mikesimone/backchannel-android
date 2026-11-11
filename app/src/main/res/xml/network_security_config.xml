@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
+    <!-- BACKCHANNEL (Mike 2026-11-11): cleartext is permitted at the platform level so the user's own
+         Immich "address at home" (often http://<LAN address>:2283) can be used; a network security config
+         can't name an address the user types in. Plain http is still refused in code everywhere else:
+         ImmichClient's OkHttp interceptor allows it only for that saved home address, the Immich sign-in
+         and main address must be https, and Signal/Molly's own connections only use https (pinned). -->
+    <base-config cleartextTrafficPermitted="true" />
     <!-- www.ssllabs.com/ssltest can be used to retrieve the SHA-256 pin for these domains. -->
     <domain-config>
         <domain includeSubdomains="true">molly.im</domain>
