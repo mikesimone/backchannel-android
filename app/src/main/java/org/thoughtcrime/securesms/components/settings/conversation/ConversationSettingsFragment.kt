@@ -32,6 +32,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import kotlinx.coroutines.launch
+import net.mikesimone.backchannel.AutoSaveMedia
 import net.mikesimone.backchannel.ChatLock
 import net.mikesimone.backchannel.ContactOverrides
 import net.mikesimone.backchannel.MediaBlur
@@ -394,6 +395,37 @@ class ConversationSettingsFragment :
       onCancel = {}
     )
     return false
+  }
+
+  // BACKCHANNEL: save received photos and videos to the gallery - Default / Always / Never for this chat
+  private fun autoSaveLabel(recipientId: RecipientId): String {
+    val context = requireContext()
+    return when (AutoSaveMedia.getChatSetting(context, recipientId)) {
+      AutoSaveMedia.ChatSetting.ALWAYS -> getString(R.string.AutoSaveMedia__always)
+      AutoSaveMedia.ChatSetting.NEVER -> getString(R.string.AutoSaveMedia__never)
+      AutoSaveMedia.ChatSetting.DEFAULT -> getString(if (AutoSaveMedia.isEnabledForAll(context)) R.string.AutoSaveMedia__default_on else R.string.AutoSaveMedia__default_off)
+    }
+  }
+
+  private fun onAutoSaveClicked(state: ConversationSettingsState) {
+    val context = requireContext()
+    val options = arrayOf(
+      getString(if (AutoSaveMedia.isEnabledForAll(context)) R.string.AutoSaveMedia__default_on else R.string.AutoSaveMedia__default_off),
+      getString(R.string.AutoSaveMedia__always),
+      getString(R.string.AutoSaveMedia__never)
+    )
+    val settings = arrayOf(AutoSaveMedia.ChatSetting.DEFAULT, AutoSaveMedia.ChatSetting.ALWAYS, AutoSaveMedia.ChatSetting.NEVER)
+    val current = settings.indexOf(AutoSaveMedia.getChatSetting(context, state.recipient.id))
+
+    MaterialAlertDialogBuilder(context)
+      .setTitle(R.string.AutoSaveMedia__save_chat)
+      .setSingleChoiceItems(options, current) { dialog, which ->
+        AutoSaveMedia.setChatSetting(context, state.recipient.id, settings[which])
+        dialog.dismiss()
+        viewModel.state.value?.let { latest -> settingsAdapter?.submitList(getConfiguration(latest).toMappingModelList()) }
+      }
+      .setNegativeButton(android.R.string.cancel, null)
+      .show()
   }
 
   // BACKCHANNEL: link a person to a phone contact by hand, and set your own photo for them.
@@ -777,6 +809,14 @@ class ConversationSettingsFragment :
             true
           },
           onClick = { viewModel.state.value?.let { current -> settingsAdapter?.submitList(getConfiguration(current).toMappingModelList()) } }
+        )
+
+        // BACKCHANNEL: save received photos and videos to the gallery, for this chat
+        clickPref(
+          title = DSLSettingsText.from(R.string.AutoSaveMedia__save_chat),
+          summary = DSLSettingsText.from(autoSaveLabel(state.recipient.id)),
+          icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_save_android_24),
+          onClick = { onAutoSaveClicked(state) }
         )
       }
 

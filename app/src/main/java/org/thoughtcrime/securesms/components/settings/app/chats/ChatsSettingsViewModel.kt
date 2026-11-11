@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.mikesimone.backchannel.AutoSaveMedia
 import net.mikesimone.backchannel.MediaBlur
 import org.signal.core.util.ThrottledDebouncer
 import org.thoughtcrime.securesms.backup.LocalExportProgress
@@ -34,6 +35,7 @@ class ChatsSettingsViewModel @JvmOverloads constructor(
       useSystemEmoji = SignalStore.settings.isPreferSystemEmoji,
       defaultSkinTone = SignalStore.emoji.defaultSkinTone,
       blurMedia = MediaBlur.isEnabledForAll(AppDependencies.application), // BACKCHANNEL
+      autoSaveMedia = AutoSaveMedia.isEnabledForAll(AppDependencies.application), // BACKCHANNEL
       enterKeySends = SignalStore.settings.isEnterKeySends,
       localBackupsEnabled = SignalStore.settings.isBackupEnabled && BackupUtil.canUserAccessBackupDirectory(AppDependencies.application),
       folderCount = 0,
@@ -110,6 +112,12 @@ class ChatsSettingsViewModel @JvmOverloads constructor(
   fun setBlurMedia(enabled: Boolean) {
     store.update { it.copy(blurMedia = enabled) }
     MediaBlur.setEnabledForAll(AppDependencies.application, enabled)
+  }
+
+  // BACKCHANNEL: save received photos and videos to the gallery
+  fun setAutoSaveMedia(enabled: Boolean) {
+    store.update { it.copy(autoSaveMedia = enabled) }
+    AutoSaveMedia.setEnabledForAll(AppDependencies.application, enabled)
   }
 
   fun setKeepMutedChatsArchived(enabled: Boolean) {

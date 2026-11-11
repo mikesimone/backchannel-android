@@ -31,6 +31,7 @@ Photos
 • Attach through Google Photos or any photo app that lets you pick.
 • The photo viewer stays inside the message you opened.
 • Blur received photos and videos until you tap them, in every chat or just the ones you pick.
+• Save received photos and videos to the gallery automatically, in every chat or just the ones you pick.
 
 Contacts and privacy
 • Link anyone to a phone contact, even if they hide their number, and it stays linked.

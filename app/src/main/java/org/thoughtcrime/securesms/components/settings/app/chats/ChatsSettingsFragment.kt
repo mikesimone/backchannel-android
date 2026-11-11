@@ -100,6 +100,11 @@ class ChatsSettingsFragment : ComposeFragment() {
       viewModel.setBlurMedia(enabled)
     }
 
+    // BACKCHANNEL: save received photos and videos to the gallery
+    override fun onAutoSaveMediaChanged(enabled: Boolean) {
+      viewModel.setAutoSaveMedia(enabled)
+    }
+
     // BACKCHANNEL: system "Open by default" page, where signal.me / signal.group links can be allowed
     override fun onOpenSignalLinksClick() {
       if (Build.VERSION.SDK_INT >= 31) {
@@ -161,6 +166,7 @@ private interface ChatsSettingsCallbacks : ChatExportCallbacks {
   fun onDefaultSkinToneClick(current: Int) = Unit
   fun onOpenSignalLinksClick() = Unit
   fun onBlurMediaChanged(enabled: Boolean) = Unit // BACKCHANNEL
+  fun onAutoSaveMediaChanged(enabled: Boolean) = Unit // BACKCHANNEL
   fun onExportPlaintextChatHistoryClick() = Unit
   fun onCancelInFlightExport() = Unit
 
@@ -254,6 +260,15 @@ private fun ChatsSettingsScreen(
           label = stringResource(R.string.MediaBlur__blur_all_summary),
           checked = state.blurMedia,
           onCheckChanged = callbacks::onBlurMediaChanged
+        )
+      }
+
+      item {
+        Rows.ToggleRow(
+          text = stringResource(R.string.AutoSaveMedia__save_all),
+          label = stringResource(R.string.AutoSaveMedia__save_all_summary),
+          checked = state.autoSaveMedia,
+          onCheckChanged = callbacks::onAutoSaveMediaChanged
         )
       }
 

@@ -5,6 +5,7 @@
 package org.thoughtcrime.securesms.jobs
 
 import androidx.annotation.MainThread
+import net.mikesimone.backchannel.AutoSaveMedia
 import okio.Source
 import okio.buffer
 import org.greenrobot.eventbus.EventBus
@@ -371,6 +372,7 @@ class AttachmentDownloadJob private constructor(
       decryptingStream.use { input ->
         SignalDatabase.attachments.finalizeAttachmentAfterDownload(messageId, attachmentId, input)
       }
+      AutoSaveMedia.onDownloaded(context, messageId, attachmentId) // BACKCHANNEL: save received photos and videos to the gallery
     } catch (e: RangeException) {
       Log.w(TAG, "[$attachmentId] Range exception, file size " + attachmentFile.length(), e)
       if (attachmentFile.delete()) {

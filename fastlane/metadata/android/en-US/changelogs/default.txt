@@ -1,1 +1,1 @@
-New: blur received photos and videos until you tap them. Turn it on for every chat in Settings > Chats, or for just one chat in its chat settings. Your own sent media stays clear.
+New: blur received photos and videos until you tap them. New: save received photos and videos to the gallery automatically. Turn each on for every chat in Settings > Chats, or set it for one chat in its chat settings. Your own sent media is never blurred, and view-once, disappearing and locked-chat media is never saved.

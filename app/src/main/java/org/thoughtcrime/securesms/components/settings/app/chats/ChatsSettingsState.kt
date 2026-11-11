@@ -18,7 +18,8 @@ data class ChatsSettingsState(
   val chatExportState: ChatExportState = ChatExportState.None,
   val includeMediaInExport: Boolean = false,
   val defaultSkinTone: Int = 0, // BACKCHANNEL
-  val blurMedia: Boolean = false // BACKCHANNEL: blur media until tapped
+  val blurMedia: Boolean = false, // BACKCHANNEL: blur media until tapped
+  val autoSaveMedia: Boolean = false // BACKCHANNEL: save received photos and videos to the gallery
 ) {
   fun isRegisteredAndUpToDate(): Boolean {
     return !userUnregistered && !clientDeprecated
