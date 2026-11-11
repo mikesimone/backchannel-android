@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.content.IntentCompat
 import androidx.fragment.app.Fragment
+import net.mikesimone.backchannel.immich.ImmichAppPicker
 import net.mikesimone.backchannel.immich.ImmichPickerActivity
 import org.signal.core.models.media.Media
 import org.signal.core.ui.permissions.Permissions
@@ -56,6 +57,7 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
   private val cameraLauncher = fragment.registerForActivityResult(MediaCapture) { result -> callbacks.onMediaSend(result) }
   private val photoAppsLauncher = fragment.registerForActivityResult(PhotoApps) { uris -> callbacks.onPhotoAppsSelected(uris, false) }
   private val immichLauncher = fragment.registerForActivityResult(ImmichPickerActivity.Contract) { uris -> callbacks.onPhotoAppsSelected(uris, true) }
+  private val immichAppLauncher = fragment.registerForActivityResult(ImmichAppPicker.Contract) { uris -> callbacks.onPhotoAppsSelected(uris, false) }
 
   fun launchContactShareEditor(uri: Uri, chatColors: ChatColors) {
     contactShareLauncher.launch(uri to chatColors)
@@ -124,6 +126,17 @@ class ConversationActivityResultContracts(private val fragment: Fragment, privat
   // BACKCHANNEL: picks photos and videos from the user's own Immich server.
   fun launchImmich() {
     immichLauncher.launch(Unit)
+  }
+
+  // BACKCHANNEL: the Immich app as the picker, when it can pick (ImmichAppPicker).
+  fun launchImmichApp(): Boolean {
+    return try {
+      immichAppLauncher.launch(Unit)
+      true
+    } catch (e: ActivityNotFoundException) {
+      Log.w(TAG, "The Immich app can't pick.")
+      false
+    }
   }
 
   // BACKCHANNEL: lets Google Photos or another photo app act as the picker.

@@ -12,6 +12,8 @@ public enum AttachmentKeyboardButton {
   PHOTO_APPS(R.string.AttachmentKeyboard_photo_apps, R.drawable.symbol_open_24),
   // BACKCHANNEL: pick photos/videos straight from the user's Immich server
   IMMICH(R.string.AttachmentKeyboard_immich, R.drawable.symbol_album_24),
+  // BACKCHANNEL: the Immich app as the picker, shown only when it can pick (ImmichAppPicker)
+  IMMICH_APP(R.string.AttachmentKeyboard_immich_app, R.drawable.symbol_open_24),
   FILE(R.string.AttachmentKeyboard_file, R.drawable.symbol_file_24),
   CONTACT(R.string.AttachmentKeyboard_contact, org.signal.core.ui.R.drawable.symbol_person_circle_24),
   LOCATION(R.string.AttachmentKeyboard_location, R.drawable.symbol_location_circle_24),

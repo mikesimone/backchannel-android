@@ -5217,6 +5217,12 @@ class ConversationFragment :
 
           AttachmentKeyboardButton.IMMICH -> conversationActivityResultContracts.launchImmich()
 
+          AttachmentKeyboardButton.IMMICH_APP -> {
+            if (!conversationActivityResultContracts.launchImmichApp()) {
+              toast(R.string.AttachmentManager_cant_open_media_selection, Toast.LENGTH_LONG)
+            }
+          }
+
           AttachmentKeyboardButton.CONTACT -> conversationActivityResultContracts.launchSelectContact()
 
           AttachmentKeyboardButton.LOCATION -> conversationActivityResultContracts.launchSelectLocation(recipient.chatColors)

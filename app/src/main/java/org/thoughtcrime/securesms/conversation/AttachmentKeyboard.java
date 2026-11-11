@@ -37,6 +37,7 @@ public class AttachmentKeyboard extends FrameLayout implements InputAwareLayout.
       AttachmentKeyboardButton.GALLERY,
       AttachmentKeyboardButton.PHOTO_APPS, // BACKCHANNEL
       AttachmentKeyboardButton.IMMICH, // BACKCHANNEL
+      AttachmentKeyboardButton.IMMICH_APP, // BACKCHANNEL
       AttachmentKeyboardButton.FILE,
       AttachmentKeyboardButton.POLL,
       AttachmentKeyboardButton.CONTACT,
@@ -47,6 +48,7 @@ public class AttachmentKeyboard extends FrameLayout implements InputAwareLayout.
   private AttachmentKeyboardMediaAdapter  mediaAdapter;
   private AttachmentKeyboardButtonAdapter buttonAdapter;
   private Callback                        callback;
+  private List<AttachmentKeyboardButton>  defaultButtons = DEFAULT_BUTTONS; // BACKCHANNEL
 
   private RecyclerView   mediaList;
   private TextView       permissionText;
@@ -105,7 +107,10 @@ public class AttachmentKeyboard extends FrameLayout implements InputAwareLayout.
     mediaList.setLayoutManager(new GridLayoutManager(context, 1, GridLayoutManager.HORIZONTAL, false));
     buttonList.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
 
-    buttonAdapter.setButtons(DEFAULT_BUTTONS);
+    // BACKCHANNEL: "Immich app" only when the Immich app can act as a picker
+    boolean immichApp = net.mikesimone.backchannel.immich.ImmichAppPicker.isAvailable(context);
+    defaultButtons = DEFAULT_BUTTONS.stream().filter(b -> immichApp || b != AttachmentKeyboardButton.IMMICH_APP).collect(Collectors.toList());
+    buttonAdapter.setButtons(defaultButtons);
   }
 
   public void setCallback(@NonNull Callback callback) {
@@ -114,9 +119,9 @@ public class AttachmentKeyboard extends FrameLayout implements InputAwareLayout.
 
   public void filterAttachmentKeyboardButtons(@Nullable Predicate<AttachmentKeyboardButton> buttonPredicate) {
     if (buttonPredicate == null) {
-      buttonAdapter.setButtons(DEFAULT_BUTTONS);
+      buttonAdapter.setButtons(defaultButtons);
     } else {
-      buttonAdapter.setButtons(DEFAULT_BUTTONS.stream().filter(buttonPredicate).collect(Collectors.toList()));
+      buttonAdapter.setButtons(defaultButtons.stream().filter(buttonPredicate).collect(Collectors.toList()));
     }
   }
 

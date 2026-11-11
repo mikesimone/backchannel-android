@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import net.mikesimone.backchannel.immich.ImmichAppPicker
 import net.mikesimone.backchannel.immich.ImmichPickerActivity
 import org.signal.core.util.ThreadUtil
 import org.signal.core.util.concurrent.SignalExecutors
@@ -183,6 +184,8 @@ object PhotoReply {
     launchers += pickFiles
     launchers += pickGif
     launchers += pickImmich
+    val pickImmichApp = registry.register("photo_reply_immich_app_" + UUID.randomUUID(), ImmichAppPicker.Contract) { addUris(it) }
+    launchers += pickImmichApp
 
     val commentRow = LinearLayout(context).apply {
       orientation = LinearLayout.HORIZONTAL
@@ -246,6 +249,9 @@ object PhotoReply {
     }
     button(CoreUiR.drawable.symbol_plus_24, R.string.PhotoReply__attach) { pickFiles.launch("*/*") }
     button(R.drawable.symbol_album_24, R.string.AttachmentKeyboard_immich) { pickImmich.launch(Unit) }
+    if (ImmichAppPicker.isAvailable(context)) {
+      button(R.drawable.symbol_open_24, R.string.AttachmentKeyboard_immich_app) { pickImmichApp.launch(Unit) }
+    }
     if (RemoteConfig.gifSearchAvailable) {
       button(R.drawable.ic_gif_24, R.string.PhotoReply__gif) { pickGif.launch(Unit) }
     }
