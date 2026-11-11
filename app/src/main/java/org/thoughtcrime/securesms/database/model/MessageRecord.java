@@ -204,7 +204,7 @@ public abstract class MessageRecord extends DisplayRecord {
       return new SpannableString(updateDisplayBody.getSpannable());
     }
 
-    return new SpannableString(getBody());
+    return new SpannableString(net.mikesimone.backchannel.SendSilently.stripMarkers(getBody())); // BACKCHANNEL: hide send-silently / auto-reply markers
   }
 
   public @Nullable UpdateDescription getUpdateDisplayBody(@NonNull Context context, @Nullable Consumer<RecipientId> recipientClickHandler) {

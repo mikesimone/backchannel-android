@@ -13,7 +13,7 @@ import org.thoughtcrime.securesms.notifications.v2.NotificationConversation
 /**
  * Send silently (Backchannel, Mike 2026-11-11): long-press Send and pick
  * "Send silently". The message goes out with an invisible marker at the end
- * of its text. When Backchannel receives a message with that marker, its
+ * of its text (shared with Backchannel Web, see MARKERS.md). When Backchannel receives a message with that marker, its
  * notification makes no sound or vibration and doesn't pop up; it still shows
  * in the notification shade and counts as unread.
  *
@@ -27,14 +27,24 @@ import org.thoughtcrime.securesms.notifications.v2.NotificationConversation
  */
 object SendSilently {
 
-  /** INVISIBLE SEPARATOR, INVISIBLE PLUS, INVISIBLE SEPARATOR: zero-width, and never typed by people. */
-  const val MARKER = "⁣⁤⁣"
+  /** INVISIBLE SEPARATOR, INVISIBLE PLUS: zero-width, never typed by people. Same as Backchannel Web (MARKERS.md). */
+  const val MARKER = "\u2063\u2064"
 
   @JvmStatic
   fun mark(body: String): String = if (isMarked(body)) body else body + MARKER
 
   @JvmStatic
-  fun isMarked(body: CharSequence?): Boolean = body != null && body.contains(MARKER)
+  fun isMarked(body: CharSequence?): Boolean = body != null && body.endsWith(MARKER)
+
+  /** The body as shown in the chat: without a trailing send-silently or auto-reply marker. */
+  @JvmStatic
+  fun stripMarkers(body: String): String {
+    return when {
+      body.endsWith(MARKER) -> body.dropLast(MARKER.length)
+      body.endsWith(AutoReply.MARKER) -> body.dropLast(AutoReply.MARKER.length)
+      else -> body
+    }
+  }
 
   /** True when every new message in this notification was sent silently. */
   @JvmStatic

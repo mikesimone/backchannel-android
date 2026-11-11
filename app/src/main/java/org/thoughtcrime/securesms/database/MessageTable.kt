@@ -4623,6 +4623,14 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
       .readToSingleInt()
   }
 
+  /** BACKCHANNEL: auto reply - whether this account (from any device) sent a message ending in [suffix] in the thread since [sinceMillis]. */
+  fun hasRecentOutgoingEndingWith(threadId: Long, suffix: String, sinceMillis: Long): Boolean {
+    return readableDatabase
+      .exists(TABLE_NAME)
+      .where("$THREAD_ID = ? AND ($outgoingTypeClause) AND $DATE_SENT >= ? AND substr($BODY, -${suffix.length}) = ?", threadId, sinceMillis, suffix)
+      .run()
+  }
+
   fun getOutgoingSecureMessageCount(threadId: Long): Int {
     return readableDatabase
       .select("COUNT(*)")

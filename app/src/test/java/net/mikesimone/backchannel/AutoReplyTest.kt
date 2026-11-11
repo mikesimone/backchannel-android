@@ -1,5 +1,6 @@
 package net.mikesimone.backchannel
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,5 +64,10 @@ class AutoReplyTest {
     assertTrue(SendSilently.isMarked(SendSilently.mark("hi")))
     assertFalse(SendSilently.isMarked("hi" + AutoReply.MARKER))
     assertTrue(SendSilently.mark(SendSilently.mark("hi")) == SendSilently.mark("hi"))
+    assertEquals("hi", SendSilently.stripMarkers(SendSilently.mark("hi")))
+    assertEquals("away", SendSilently.stripMarkers("away" + AutoReply.MARKER))
+    assertEquals("plain", SendSilently.stripMarkers("plain"))
+    assertEquals("\u2063\u2064", SendSilently.MARKER)
+    assertEquals("\u2063\u2062", AutoReply.MARKER)
   }
 }

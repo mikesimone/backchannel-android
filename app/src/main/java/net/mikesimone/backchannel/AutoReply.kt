@@ -38,8 +38,10 @@ import java.util.concurrent.TimeUnit
  * Never replies in groups, Note to Self, to blocked people, to message
  * requests you haven't accepted, to your own or synced messages, or to a
  * message that is itself an auto reply (auto replies carry an invisible
- * marker, so two Backchannel phones don't answer each other; the 4-hour limit
- * stops loops with anything else).
+ * marker, shared with Backchannel Web in MARKERS.md, so two Backchannel apps
+ * don't answer each other; the 4-hour limit stops loops with anything else).
+ * If a linked Backchannel Web already auto replied in the chat within 4 hours
+ * (its sync copy is on this phone), this phone doesn't reply again.
  *
  * Settings > Chats > Auto reply. Off by default. Stored on this phone only.
  */
@@ -47,8 +49,8 @@ object AutoReply {
 
   private val TAG = Log.tag(AutoReply::class.java)
 
-  /** INVISIBLE PLUS, INVISIBLE SEPARATOR, INVISIBLE PLUS: different from [SendSilently.MARKER]. */
-  const val MARKER = "⁤⁣⁤"
+  /** INVISIBLE SEPARATOR, INVISIBLE TIMES at the end of the text. Same as Backchannel Web (MARKERS.md); different from [SendSilently.MARKER]. */
+  const val MARKER = "\u2063\u2062"
 
   private val THROTTLE_MS = TimeUnit.HOURS.toMillis(4)
 
@@ -131,7 +133,7 @@ object AutoReply {
   }
 
   @JvmStatic
-  fun isAutoReply(body: CharSequence?): Boolean = body != null && body.contains(MARKER)
+  fun isAutoReply(body: CharSequence?): Boolean = body != null && body.endsWith(MARKER)
 
   private fun minuteOfDay(now: Long): Int {
     val calendar = Calendar.getInstance().apply { timeInMillis = now }
@@ -175,6 +177,8 @@ object AutoReply {
       synchronized(this) {
         val now = System.currentTimeMillis()
         if (!throttleAllows(lastPrefs.getLong(key, 0L), now)) return
+        // Backchannel Web may have auto replied already (its sync copy is on this phone): first sender wins.
+        if (threadId > 0 && SignalDatabase.messages.hasRecentOutgoingEndingWith(threadId, MARKER, now - THROTTLE_MS)) return
         lastPrefs.edit().putLong(key, now).commit()
       }
 
