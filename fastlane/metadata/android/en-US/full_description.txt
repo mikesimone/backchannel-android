@@ -39,8 +39,6 @@ Contacts and privacy
 • Linked contacts and your contact photos show on your linked computers too (Backchannel Web and Signal Desktop).
 • Lock any chat behind your fingerprint.
 • Optional: accept changed safety numbers without confirming each one (off by default).
-• Passphrase is optional, and screenshots are allowed.
-• Open Signal links in Backchannel.
 
 EVERYTHING YOU EXPECT
 Private messages, groups, voice and video calls, voice notes, photos and files, reactions, polls, stickers, disappearing messages, stories, scheduled messages and more.

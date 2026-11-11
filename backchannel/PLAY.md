@@ -39,10 +39,11 @@ guessed app-content URLs redirect elsewhere.
   2026-11-09), so "Apply for production" unlocks about 2026-11-16 if none drop out. Applying
   asks questions about the closed test (how testers used it, feedback, changes made).
 - Release notes: `fastlane/metadata/android/en-US/changelogs/default.txt`.
-- In-app What's New (`WhatsNew__body` in `strings_backchannel_main.xml`), from version 12
-  (Mike 2026-11-07): two sections only, "New in this version" and one "Everything Backchannel
-  adds" list of all earlier features (not per version). Each release: move the previous
-  version's items into the big list, write the new ones.
+- In-app What's New (`WhatsNew__body` in `strings_backchannel_main.xml`), from version 14
+  (Mike 2026-11-11): "New in this release" (this release's features AND fixes, fixes as
+  "Fixed: ...") and "What Backchannel adds" (features only, every earlier release; fixes,
+  defaults and housekeeping never go there). Each release: move the previous release's
+  features into the big list, drop its fixes, write the new ones.
 - Every feature in What's New is also in the store listing's "WHAT BACKCHANNEL ADDS"
   (`fastlane/metadata/android/en-US/full_description.txt`, grouped, max 4000 chars; Mike
   2026-11-07). Add it to both in the same commit.
