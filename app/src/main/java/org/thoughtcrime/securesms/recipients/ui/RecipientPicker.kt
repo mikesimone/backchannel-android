@@ -362,6 +362,16 @@ private suspend fun showItemContextMenu(
           action = { callbacks.onHideInBackchannel(recipient) }
         )
       )
+
+      // BACKCHANNEL: delete the chat and remove them from your contacts (not a block)
+      add(
+        ActionItem(
+          iconRes = R.drawable.ic_trash_24,
+          title = context.getString(R.string.DeleteContact__delete_contact),
+          tintRes = com.google.android.material.R.attr.colorError,
+          action = { callbacks.onDeleteInBackchannel(recipient) }
+        )
+      )
     }
 
     if (!recipient.isSelf) {
@@ -441,6 +451,7 @@ class RecipientPickerCallbacks(
     fun onRemove(recipient: Recipient)
     fun onBlock(recipient: Recipient)
     fun onHideInBackchannel(recipient: Recipient) = Unit // BACKCHANNEL
+    fun onDeleteInBackchannel(recipient: Recipient) = Unit // BACKCHANNEL
   }
 
   interface NewConversation {

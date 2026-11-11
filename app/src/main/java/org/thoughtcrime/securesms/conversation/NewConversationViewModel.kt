@@ -116,6 +116,11 @@ class NewConversationViewModel : ViewModel() {
     internalUiState.update { it.copy(shouldResetContactsList = true) }
   }
 
+  // BACKCHANNEL: Delete contact finished; reload the list
+  fun onBackchannelContactDeleted() {
+    internalUiState.update { it.copy(shouldResetContactsList = true) }
+  }
+
   fun showBlockConfirmation(recipient: Recipient) {
     internalUiState.update {
       it.copy(userMessage = Prompt.ConfirmBlockRecipient(recipient))

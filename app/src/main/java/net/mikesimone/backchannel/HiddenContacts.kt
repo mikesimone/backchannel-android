@@ -22,11 +22,15 @@ import org.thoughtcrime.securesms.recipients.RecipientId
  * that person's chat settings; Settings > Chats > Hidden contacts lists them
  * and unhides them. Stored on this phone only. It never changes the phone's
  * own address book.
+ *
+ * Deleting a contact (see [DeleteContact]) also hides them; unlike a plain
+ * hide, that one ends as soon as they message you again.
  */
 object HiddenContacts {
 
   private const val PREFS = "backchannel_hidden_contacts"
   private const val KEY_HIDDEN = "hidden_recipients"
+  private const val KEY_DELETED = "deleted_recipients"
 
   @Volatile
   private var cache: Set<Long>? = null
@@ -53,6 +57,27 @@ object HiddenContacts {
 
   @JvmStatic
   fun count(context: Context): Int = hidden(context).size
+
+  private fun deletedPrefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+  /** Hidden because you deleted them: they come back when they message you. */
+  @JvmStatic
+  fun markDeleted(context: Context, recipientId: RecipientId) {
+    setHidden(context, recipientId, true)
+    val deleted = deletedPrefs(context).getStringSet(KEY_DELETED, emptySet())?.toMutableSet() ?: mutableSetOf()
+    deleted.add(recipientId.serialize())
+    deletedPrefs(context).edit().putStringSet(KEY_DELETED, deleted).apply()
+  }
+
+  /** Called for every new 1:1 message from [recipientId]: a deleted contact who messages you shows up again. */
+  @JvmStatic
+  fun onMessageFrom(context: Context, recipientId: RecipientId) {
+    if (!isHidden(context, recipientId)) return
+    val deleted = deletedPrefs(context).getStringSet(KEY_DELETED, emptySet()) ?: emptySet()
+    if (!deleted.contains(recipientId.serialize())) return
+    deletedPrefs(context).edit().putStringSet(KEY_DELETED, deleted - recipientId.serialize()).apply()
+    setHidden(context, recipientId, false)
+  }
 
   /**
    * SQL to add to a picker query's WHERE clause: " AND [idColumn] NOT IN (...)",

@@ -206,6 +206,10 @@ object DataMessageProcessor {
       handleProfileKey(envelope.clientTimestamp!!, message.profileKey!!.toByteArray(), senderRecipient)
     }
 
+    if (groupId == null && messageId != null) {
+      net.mikesimone.backchannel.HiddenContacts.onMessageFrom(context, senderRecipient.id) // BACKCHANNEL: a deleted contact who messages you shows up again
+    }
+
     if (groupId == null && senderRecipient.hiddenState == HiddenState.HIDDEN) {
       SignalDatabase.recipients.markHidden(senderRecipient.id, clearProfileKey = false, showMessageRequest = true)
     }

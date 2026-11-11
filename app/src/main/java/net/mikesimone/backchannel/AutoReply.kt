@@ -132,6 +132,12 @@ object AutoReply {
     return lastReply <= 0 || now - lastReply >= throttleMs || now < lastReply
   }
 
+  /** Forgets when this chat last got an auto reply (Delete contact). */
+  @JvmStatic
+  fun clear(context: Context, recipientId: RecipientId) {
+    context.applicationContext.getSharedPreferences(PREFS_LAST, Context.MODE_PRIVATE).edit().remove(recipientId.serialize()).apply()
+  }
+
   @JvmStatic
   fun isAutoReply(body: CharSequence?): Boolean = body != null && body.endsWith(MARKER)
 

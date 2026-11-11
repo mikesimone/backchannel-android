@@ -101,6 +101,14 @@ object MediaBlur {
     )
   }
 
+  /** Forgets this chat's own choice, so it follows Settings > Chats again (Delete contact). */
+  @JvmStatic
+  fun clear(context: Context, recipientId: RecipientId) {
+    val prefs = prefs(context)
+    val id = recipientId.serialize()
+    save(context, prefs.copy(on = prefs.on - id, off = prefs.off - id))
+  }
+
   /** Called by the chat screen before it shows a message's media. */
   @JvmStatic
   fun bind(context: Context, record: MessageRecord, threadRecipientId: RecipientId) {

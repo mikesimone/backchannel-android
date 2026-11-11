@@ -1273,6 +1273,17 @@ class ConversationSettingsFragment :
           }
         )
 
+        // BACKCHANNEL: delete the chat and remove them from your contacts (not a block)
+        if (state.recipient.isIndividual && !state.recipient.isSelf && !state.recipient.isReleaseNotes) {
+          clickPref(
+            title = DSLSettingsText.from(R.string.DeleteContact__delete_contact, alertTint),
+            icon = DSLSettingsIcon.from(R.drawable.ic_trash_24, R.color.signal_alert_primary),
+            onClick = {
+              net.mikesimone.backchannel.DeleteContact.confirm(requireContext(), state.recipient) { goToConversationList() }
+            }
+          )
+        }
+
         if (!state.recipient.isReleaseNotes) {
           val reportSpamTint = if (state.isDeprecatedOrUnregistered) R.color.signal_alert_primary_50 else R.color.signal_alert_primary
           clickPref(
