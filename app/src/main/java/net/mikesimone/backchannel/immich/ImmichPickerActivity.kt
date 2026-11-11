@@ -589,7 +589,7 @@ private fun SetupScreen(viewModel: ImmichPickerViewModel, onSignIn: (server: Str
       value = home,
       onValueChange = { home = it },
       label = { Text(stringResource(R.string.Immich__home_address)) },
-      placeholder = { Text("http://192.168.1.10:2283") },
+      placeholder = { Text("https://immich.home.example") },
       supportingText = { Text(stringResource(R.string.Immich__home_address_help)) },
       singleLine = true,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = if (useKey) ImeAction.Next else ImeAction.Done),

@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit
  * see [ImmichLoginActivity]), which gives a session token sent as
  * `Authorization: Bearer`. An API key (`x-api-key`) still works as an advanced
  * option. An optional "address at home" is used automatically when it answers
- * (see [ImmichRouter]); it may be plain http, which is allowed for that one
- * address only. Addresses and the token or key stay on this phone, in
+ * (see [ImmichRouter]). Both addresses must be https (Mike 2026-11-11: no
+ * app-wide cleartext allowance). Addresses and the token or key stay on this phone, in
  * app-private preferences. For providers that block sign-in inside apps
  * (Google), [ImmichBrowserSso] signs in through the browser instead, the way
  * Immich's own phone app does. Uses the deprecated-but-supported page-based search
@@ -67,18 +67,15 @@ object ImmichClient {
   /** The two addresses after checking what the user typed. */
   data class Addresses(val main: String, val home: String?)
 
-  @Volatile
-  private var appContext: Context? = null
 
   private val client: OkHttpClient by lazy {
     AppDependencies.okHttpClient.newBuilder()
       .connectTimeout(15, TimeUnit.SECONDS)
       .readTimeout(60, TimeUnit.SECONDS)
       .addInterceptor { chain ->
-        // Plain http only ever goes to the user's own home address.
+        // Immich traffic is https only (Mike 2026-11-11).
         val request = chain.request()
-        val home = appContext?.let { home(it) }
-        if (!ImmichUrls.cleartextAllowed(request.url, home)) throw IOException("Plain http is only used for the address at home")
+        if (!request.url.isHttps) throw IOException("Immich addresses must use https")
         chain.proceed(request)
       }
       .build()
@@ -93,7 +90,7 @@ object ImmichClient {
       .build()
   }
 
-  private fun prefs(context: Context) = context.applicationContext.also { appContext = it }.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+  private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
   fun isConnected(context: Context): Boolean = server(context) != null && auth(context) != null
 
@@ -139,9 +136,8 @@ object ImmichClient {
   }
 
   /**
-   * Checks what the user typed. The main address must be https (it is also the
-   * one used to sign in); the home address may be http, and without a scheme
-   * it is taken as http.
+   * Checks what the user typed. Both addresses must be https (Mike 2026-11-11);
+   * without a scheme, https is assumed.
    */
   fun addresses(context: Context, serverInput: String, homeInput: String): Addresses {
     val main = ImmichUrls.normalize(serverInput) ?: throw ImmichException(context.getString(R.string.Immich__bad_address))
@@ -149,8 +145,9 @@ object ImmichClient {
     val home = if (homeInput.isBlank()) {
       null
     } else {
-      ImmichUrls.normalize(homeInput, defaultScheme = "http") ?: throw ImmichException(context.getString(R.string.Immich__bad_home_address))
+      ImmichUrls.normalize(homeInput) ?: throw ImmichException(context.getString(R.string.Immich__bad_home_address))
     }
+    if (home != null && !ImmichUrls.isHttps(home)) throw ImmichException(context.getString(R.string.Immich__home_needs_https))
     return Addresses(main, home?.takeIf { it != main })
   }
 

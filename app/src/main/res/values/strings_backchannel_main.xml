@@ -84,7 +84,7 @@
   <string name="Immich__api_key_help">In Immich on the web, open Account settings &gt; API keys &gt; New API key. Give it All permissions, or at least asset read, view and download, album read and user read.</string>
   <string name="Immich__connect">Connect</string>
   <string name="Immich__home_address">Address at home (optional)</string>
-  <string name="Immich__home_address_help">Used automatically when your phone can reach it, for example on your home Wi-Fi. Can be plain http. Signing in always uses the server address, since single sign-on usually needs the internet.</string>
+  <string name="Immich__home_address_help">Used automatically when your phone can reach it, for example on your home Wi-Fi. Must be https. Signing in always uses the server address, since single sign-on usually needs the internet.</string>
   <string name="Immich__sign_in">Sign in</string>
   <string name="Immich__sign_in_help">Opens your server\'s own login page: email and password, or single sign-on if your server has it.</string>
   <string name="Immich__sign_in_title">Sign in to Immich</string>
@@ -96,7 +96,8 @@
   <string name="Immich__paste_key">Paste an API key</string>
   <string name="Immich__bad_address">That server address doesn\'t look right</string>
   <string name="Immich__bad_home_address">That home address doesn\'t look right</string>
-  <string name="Immich__needs_https">The server address needs https. A plain http address can go in Address at home.</string>
+  <string name="Immich__needs_https">The server address needs https.</string>
+  <string name="Immich__home_needs_https">The home address needs https too.</string>
   <string name="AttachmentKeyboard_immich_app">Immich app</string>
   <string name="Immich__sign_in_browser">Sign in with browser (for Google and other single sign-on)</string>
   <string name="Immich__sign_in_browser_help">Works wherever the Immich phone app\'s sign-in works. If Android asks which app to open, pick Backchannel.</string>
