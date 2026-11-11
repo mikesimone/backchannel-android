@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: the "2" badge for themed icons: a disc with the 2 cut out (even-odd fill). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M68,29a11,11 0,1 1,0 22a11,11 0,1 1,0 -22Z M64,34H72V41.2H66.4V43.6H72V46H64V38.8H69.6V36.4H64Z" />
+</vector>

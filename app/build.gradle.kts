@@ -39,9 +39,12 @@ val selectableVariants = listOf(
 // Override build config via env vars when project property 'CI' is set
 val ciEnabled = project.hasProperty("CI")
 
-val baseAppTitle = getCiEnv("CI_APP_TITLE") ?: properties["baseAppTitle"] as String
-val baseAppFileName = getCiEnv("CI_APP_FILENAME") ?: properties["baseAppFileName"] as String
-val basePackageId = getCiEnv("CI_PACKAGE_ID") ?: properties["basePackageId"] as String
+// BACKCHANNEL: Backchannel 2, a second install (own package id, title and icon) for a
+// second number. Build with -PbackchannelTwo=true, or CI_BACKCHANNEL_TWO=true on CI.
+val backchannelTwo = (getCiEnv("CI_BACKCHANNEL_TWO") ?: properties["backchannelTwo"] as String?).toBoolean()
+val baseAppTitle = (getCiEnv("CI_APP_TITLE") ?: properties["baseAppTitle"] as String).let { if (backchannelTwo) "$it 2" else it }
+val baseAppFileName = (getCiEnv("CI_APP_FILENAME") ?: properties["baseAppFileName"] as String).let { if (backchannelTwo) "$it-2" else it }
+val basePackageId = (getCiEnv("CI_PACKAGE_ID") ?: properties["basePackageId"] as String).let { if (backchannelTwo) "$it.two" else it }
 val buildVariants = getCiEnv("CI_BUILD_VARIANTS") ?: properties["buildVariants"] as String
 val forceInternalUserFlag = getCiEnv("CI_FORCE_INTERNAL_USER_FLAG") ?: properties["forceInternalUserFlag"] as String
 // BACKCHANNEL: our release number on top of Molly's version
@@ -272,6 +275,12 @@ android {
       signingConfig = signingConfigs.findByName("ci")
       proguardFiles(*buildTypes["debug"].proguardFiles.toTypedArray())
     }
+  }
+
+  // BACKCHANNEL: Backchannel 2's icon and Firebase override. Build-type source sets win over
+  // the flavors (prod has our Firebase app), so src/two/res replaces both for every variant.
+  if (backchannelTwo) {
+    buildTypes.names.forEach { sourceSets.getByName(it).res.srcDir("src/two/res") }
   }
 
   productFlavors {

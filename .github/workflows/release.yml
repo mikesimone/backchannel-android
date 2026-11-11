@@ -111,6 +111,100 @@ jobs:
           path: reproducible-builds/outputs/bundle/*Release/*.aab
           if-no-files-found: error
 
+  # BACKCHANNEL: Backchannel 2, a second install (package id + ".two", title
+  # "Backchannel 2", badged icon, no Google push) so a phone can run a second
+  # number. Same source, same keystore; its own runner so the main build and
+  # its outputs stay exactly as they were. GitHub release only, never Play.
+  build_two:
+    name: Build Backchannel 2
+    if: "github.event.base_ref != 'refs/heads/upstream-main'"
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: "${{ env.TAG_REF }}"
+
+      - name: Free up disk space in runner
+        uses: ./.github/actions/disk-cleanup
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Build Docker image
+        run: docker compose build
+        working-directory: reproducible-builds
+
+      - name: Export CI environment variables
+        run: |
+          cp -v "ci/$BUILD_ENV_FILE" .env
+          for var in APP_TITLE APP_FILENAME PACKAGE_ID \
+                     BUILD_VARIANTS FORCE_INTERNAL_USER_FLAG \
+                     MAPS_API_KEY; do
+            if [ -n "${!var}" ]; then
+              echo "Setting CI_$var=${!var}"
+              echo "CI_$var=${!var}" >> $GITHUB_ENV
+            fi
+          done
+          echo "CI_BACKCHANNEL_TWO=true" >> $GITHUB_ENV
+        working-directory: reproducible-builds
+        env:
+          APP_TITLE: ${{ vars.CI_APP_TITLE }}
+          APP_FILENAME: ${{ vars.CI_APP_FILENAME }}
+          PACKAGE_ID: ${{ vars.CI_PACKAGE_ID }}
+          BUILD_VARIANTS: ${{ vars.CI_BUILD_VARIANTS }}
+          FORCE_INTERNAL_USER_FLAG: ${{ vars.CI_FORCE_INTERNAL_USER_FLAG }}
+
+      - name: Extract signing keys
+        if: "env.HAVE_KEYSTORE == 'true'"
+        run: printenv KEYSTORE | base64 -d > certs/keystore.jks
+        working-directory: reproducible-builds
+        env:
+          KEYSTORE: ${{ secrets.SECRET_KEYSTORE }}
+
+      - name: Build without signing
+        if: "env.HAVE_KEYSTORE == 'false'"
+        run: docker compose run -v "$GRADLE_USER_HOME/caches:/.gradle-ro-cache:ro" assemble
+        working-directory: reproducible-builds
+
+      - name: Build and sign
+        if: "env.HAVE_KEYSTORE == 'true'"
+        run: docker compose run -v "$GRADLE_USER_HOME/caches:/.gradle-ro-cache:ro" assemble
+        working-directory: reproducible-builds
+        env:
+          CI_KEYSTORE_PATH: certs/keystore.jks
+          CI_KEYSTORE_ALIAS: ${{ secrets.SECRET_KEYSTORE_ALIAS }}
+          CI_KEYSTORE_PASSWORD: ${{ secrets.SECRET_KEYSTORE_PASSWORD }}
+
+      - name: Clean up keystore
+        if: "always()"
+        run: rm -f certs/keystore.jks
+        working-directory: reproducible-builds
+
+      - name: Name the APK
+        run: |
+          apks=(outputs/apk/*/release/*.apk)
+          [ ${#apks[@]} -eq 1 ] && [ -f "${apks[0]}" ] || { echo "Expected one release APK, got: ${apks[*]}" >&2; exit 1; }
+          mkdir -p two
+          cp -v "${apks[0]}" "two/Backchannel-2-$TAG_REF.apk"
+          sha256sum two/*.apk
+        working-directory: reproducible-builds
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-two
+          path: reproducible-builds/two/*.apk
+          if-no-files-found: error
+
   prepare_release:
     name: Prepare release
     if: "github.event.base_ref != 'refs/heads/upstream-main'"
@@ -184,6 +278,31 @@ jobs:
       # BACKCHANNEL: publish right away so Obtainium sees it (Molly reviews drafts by hand).
       - name: Publish release
         run: gh release edit "$TAG_REF" --draft=false --latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
+
+  # BACKCHANNEL: attach Backchannel 2's APK to the release the Upload job made.
+  # Separate job, so a Backchannel 2 failure never holds up the main release.
+  upload_two:
+    name: Upload Backchannel 2
+    runs-on: ubuntu-24.04
+    needs:
+      - build_two
+      - upload
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: "${{ env.TAG_REF }}"
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-two
+          path: apk-two
+
+      - name: Upload APK to GitHub release
+        run: gh release upload "$TAG_REF" ./apk-two/*.apk --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_PAT || secrets.GITHUB_TOKEN }}
 

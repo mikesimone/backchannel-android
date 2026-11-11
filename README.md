@@ -52,6 +52,26 @@ page. To get updates automatically, add this repo to
 [Obtainium](https://github.com/ImranR98/Obtainium). There's no in-app
 updater.
 
+## Backchannel 2: a second number
+
+Signal apps hold one account each. To use a second number on the same
+phone, install **Backchannel 2** next to Backchannel: it's the same app
+under its own package (`net.mikesimone.backchannel.two`), with its own name,
+a launcher icon with a pink "2" badge, and its own chats and settings.
+
+1. From the same
+   [Releases](https://github.com/mikesimone/backchannel-android/releases)
+   page, download `Backchannel-2-<version>.apk` and install it. It's not on
+   Google Play.
+2. Open it and register the second number (or restore that number's backup).
+3. For updates in Obtainium, add this repo a second time and set *Filter
+   APKs by regular expression* to `Backchannel-2`. Set the first one's
+   filter to `app-prod` so each picks its own APK.
+
+Backchannel 2 has no Google push of its own, so it uses the kept-open
+connection (allow it to run unrestricted) or UnifiedPush, as chosen in
+Settings > Notifications.
+
 ## How this fork is kept
 
 - `main` is Molly plus Backchannel's changes. Every change to Molly or
@@ -79,6 +99,9 @@ Same as Molly: see [BUILDING.md](BUILDING.md) and
 [reproducible-builds](reproducible-builds). Releases are signed with
 Backchannel's own key, held only in this repo's Actions secrets
 (`SECRET_KEYSTORE`, `SECRET_KEYSTORE_ALIAS`, `SECRET_KEYSTORE_PASSWORD`).
+Backchannel 2 is the same build with `-PbackchannelTwo=true` (on CI,
+`CI_BACKCHANNEL_TWO=true`), e.g. `./gradlew -PbackchannelTwo=true :app:assembleProdStoreDebug`;
+the Release workflow builds and attaches it to each GitHub release.
 
 ## Privacy
 

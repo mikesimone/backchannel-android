@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BACKCHANNEL: Backchannel 2 has no Firebase app of its own (Backchannel's is registered
+     for the main package only), so Firebase stays uninitialized and the app registers
+     without Google push: it uses the kept-open connection (or UnifiedPush). To give it
+     Google push later, register <package>.two in Firebase and put its values here. -->
+<resources>
+    <string name="google_app_id" translatable="false"></string>
+    <string name="google_api_key" translatable="false"></string>
+    <string name="google_crash_reporting_api_key" translatable="false"></string>
+    <string name="project_id" translatable="false"></string>
+</resources>

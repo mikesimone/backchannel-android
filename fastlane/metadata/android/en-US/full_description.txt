@@ -18,6 +18,7 @@ Conversations
 • Send silently: long-press Send, and people using Backchannel get no sound or buzz.
 • Auto reply: an away message for 1:1 chats, optionally only at set times or until a set date.
 • Hide group updates (joined, left, name changes) from members who aren't admins.
+• Backchannel 2: a second number on the same phone (a separate download from GitHub).
 
 On your phone, nothing leaves it
 • Translate a message with your phone's offline translator.

@@ -38,7 +38,12 @@ public final class FcmUtil {
   public static Optional<String> getTokenWithoutAvailCheck(Context context) {
     String token = null;
 
-    FirebaseApp.initializeApp(context);
+    // BACKCHANNEL: Backchannel 2 ships without a Firebase app (empty google_app_id); then there is
+    // no Google push, and registration falls back to the no-FCM path instead of crashing.
+    if (FirebaseApp.initializeApp(context) == null) {
+      Log.w(TAG, "Firebase isn't configured in this build; no FCM token.");
+      return Optional.empty();
+    }
 
     try {
       token = Tasks.await(FirebaseMessaging.getInstance().getToken());
