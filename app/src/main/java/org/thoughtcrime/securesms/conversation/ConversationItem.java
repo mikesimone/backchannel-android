@@ -207,6 +207,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
   @Nullable private ViewGroup                  contactPhotoHolder;
   @Nullable private QuoteView                  quoteView;
   private           EmojiTextView              bodyText;
+  private           android.widget.TextView    voiceTranscript; // BACKCHANNEL: voice message transcript
   private           ConversationItemFooter     footer;
   @Nullable private ConversationItemFooter     stickerFooter;
   @Nullable private SenderNameWithLabelView    senderWithLabelView;
@@ -331,6 +332,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     initializeAttributes();
 
     this.bodyText                  = findViewById(R.id.conversation_item_body);
+    this.voiceTranscript           = findViewById(R.id.backchannel_voice_transcript); // BACKCHANNEL
     this.footer                    = findViewById(R.id.conversation_item_footer);
     this.stickerFooter             = findViewById(R.id.conversation_item_sticker_footer);
     this.senderWithLabelView       = findViewById(R.id.group_sender_name_with_label);
@@ -423,6 +425,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
     setAuthor(messageRecord, previousMessageRecord, nextMessageRecord, groupThread, hasWallpaper);
     setStarredSource(messageRecord, conversationMessage);
     setQuote(messageRecord, previousMessageRecord, nextMessageRecord, groupThread);
+    net.mikesimone.backchannel.VoiceTranscripts.bind(voiceTranscript, messageRecord, bodyText.getCurrentTextColor(), passthroughClickListener); // BACKCHANNEL: transcript under the voice message
     setMessageSpacing(context, messageRecord, previousMessageRecord, nextMessageRecord, groupThread);
     setReactions(messageRecord);
     setFooter(messageRecord, nextMessageRecord, locale, groupThread, hasWallpaper);

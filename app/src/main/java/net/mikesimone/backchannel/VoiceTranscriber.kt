@@ -24,6 +24,7 @@ import org.signal.core.util.ServiceUtil
 import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.R
+import org.thoughtcrime.securesms.attachments.DatabaseAttachment
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import java.io.FileOutputStream
@@ -40,6 +41,9 @@ import java.util.Locale
  * no offline recognizer, or no offline model for the language, it says so and
  * asks the system to download the model; it never falls back to a cloud
  * service. Needs Android 13 (file audio input for the recognizer).
+ *
+ * Transcripts are kept and shown under the voice message ([VoiceTranscripts],
+ * Backchannel, Mike 2026-11-11), which can also transcribe incoming ones on its own.
  */
 object VoiceTranscriber {
 
@@ -54,12 +58,36 @@ object VoiceTranscriber {
   @JvmStatic
   fun show(context: Context, record: MessageRecord) {
     if (Build.VERSION.SDK_INT < 33) return
-    val uri = (record as? MmsMessageRecord)?.slideDeck?.audioSlide?.uri ?: return
-    Session(context, uri).start()
+    val slide = (record as? MmsMessageRecord)?.slideDeck?.audioSlide ?: return
+    val uri = slide.uri ?: return
+    val attachmentId = (slide.asAttachment() as? DatabaseAttachment)?.attachmentId
+    Session(context, uri) { text -> if (attachmentId != null) VoiceTranscripts.save(context, attachmentId, record.id, text) }.start()
   }
 
+  /** What a [Recognition] reports back, on the main thread. */
+  interface Listener {
+    /** The words so far (final segments plus the current partial guess). */
+    fun onProgress(text: String) = Unit
+
+    /**
+     * Recognition ended. [text] is the transcript (empty when no words were recognized).
+     * [error] is a message for the user when it failed; a failed run has [complete] false
+     * and should not be stored, so it can be tried again.
+     */
+    fun onDone(text: String, error: String?, complete: Boolean)
+  }
+
+  /**
+   * One on-device recognition run over a voice message file. Start and use it on the main
+   * thread. Never uses a network recognizer: [start] fails if the phone has no on-device one.
+   */
   @RequiresApi(33)
-  private class Session(private val context: Context, private val audio: Uri) : RecognitionListener {
+  class Recognition(
+    private val context: Context,
+    private val audio: Uri,
+    private val listener: Listener,
+    private val askForModel: Boolean
+  ) : RecognitionListener {
 
     private val finalText = StringBuilder()
     private var partial = ""
@@ -67,36 +95,9 @@ object VoiceTranscriber {
     private var recognizer: SpeechRecognizer? = null
     private var readSide: ParcelFileDescriptor? = null
 
-    private val textView = TextView(context).apply {
-      val pad = (24 * context.resources.displayMetrics.density).toInt()
-      setPadding(pad, pad / 2, pad, 0)
-      setTextIsSelectable(true)
-      textSize = 16f
-      setText(R.string.Transcribe__working)
-    }
-
-    private val dialog: AlertDialog = MaterialAlertDialogBuilder(context)
-      .setTitle(R.string.Transcribe__title)
-      .setView(ScrollView(context).apply { addView(textView) })
-      .setPositiveButton(R.string.Transcribe__copy, null)
-      .setNegativeButton(R.string.Transcribe__close, null)
-      .create()
-
     fun start() {
-      dialog.setOnShowListener {
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
-          isEnabled = false
-          setOnClickListener {
-            ServiceUtil.getClipboardManager(context).setPrimaryClip(ClipData.newPlainText("transcript", finalText.toString().trim()))
-            Toast.makeText(context, R.string.Transcribe__copied, Toast.LENGTH_SHORT).show()
-          }
-        }
-      }
-      dialog.setOnDismissListener { stop() }
-      dialog.show()
-
       if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
-        finish(context.getString(R.string.Transcribe__no_offline))
+        finish(context.getString(R.string.Transcribe__no_offline), complete = false)
         return
       }
 
@@ -104,7 +105,7 @@ object VoiceTranscriber {
         ParcelFileDescriptor.createPipe()
       } catch (e: IOException) {
         Log.w(TAG, "Couldn't open a pipe", e)
-        finish(context.getString(R.string.Transcribe__failed))
+        finish(context.getString(R.string.Transcribe__failed), complete = false)
         return
       }
       readSide = pipe[0]
@@ -141,6 +142,12 @@ object VoiceTranscriber {
       }
     }
 
+    /** Stops without reporting anything further. */
+    fun cancel() {
+      done = true
+      stop()
+    }
+
     private fun stop() {
       recognizer?.destroy()
       recognizer = null
@@ -150,22 +157,11 @@ object VoiceTranscriber {
       }
     }
 
-    private fun render() {
+    private fun finish(error: String?, complete: Boolean) {
       if (done) return
-      val text = (finalText.toString() + " " + partial).trim()
-      textView.text = if (text.isEmpty()) context.getString(R.string.Transcribe__working) else text
-    }
-
-    private fun finish(message: String?) {
       done = true
-      val text = finalText.toString().trim()
-      textView.text = when {
-        text.isNotEmpty() -> text
-        message != null -> message
-        else -> context.getString(R.string.Transcribe__nothing)
-      }
-      dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = text.isNotEmpty()
       stop()
+      listener.onDone(finalText.toString().trim(), error, complete)
     }
 
     private fun append(results: Bundle?) {
@@ -177,48 +173,39 @@ object VoiceTranscriber {
       partial = ""
     }
 
-    override fun onSegmentResults(segmentResults: Bundle) {
-      append(segmentResults)
-      render()
+    private fun progress() {
+      if (!done) listener.onProgress((finalText.toString() + " " + partial).trim())
     }
 
-    override fun onEndOfSegmentedSession() = finish(null)
+    override fun onSegmentResults(segmentResults: Bundle) {
+      append(segmentResults)
+      progress()
+    }
+
+    override fun onEndOfSegmentedSession() = finish(null, complete = true)
 
     override fun onResults(results: Bundle?) {
       append(results)
-      finish(null)
+      finish(null, complete = true)
     }
 
     override fun onPartialResults(partialResults: Bundle?) {
       partial = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-      render()
+      progress()
     }
 
     override fun onError(error: Int) {
       Log.w(TAG, "Recognizer error $error")
       if (done) return
-      val message = when (error) {
+      when (error) {
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
         SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> {
-          downloadModel()
-          context.getString(R.string.Transcribe__downloading, Locale.getDefault().displayLanguage)
+          if (askForModel) downloadModel(context)
+          finish(context.getString(R.string.Transcribe__downloading, Locale.getDefault().displayLanguage), complete = false)
         }
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> context.getString(R.string.Transcribe__no_permission)
-        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> null
-        else -> context.getString(R.string.Transcribe__failed)
-      }
-      finish(message)
-    }
-
-    private fun downloadModel() {
-      try {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
-        SpeechRecognizer.createOnDeviceSpeechRecognizer(context).apply {
-          triggerModelDownload(intent)
-          destroy()
-        }
-      } catch (e: Exception) {
-        Log.w(TAG, "Couldn't ask for the offline model", e)
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> finish(context.getString(R.string.Transcribe__no_permission), complete = false)
+        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> finish(null, complete = true)
+        else -> finish(context.getString(R.string.Transcribe__failed), complete = false)
       }
     }
 
@@ -228,6 +215,73 @@ object VoiceTranscriber {
     override fun onBufferReceived(buffer: ByteArray?) = Unit
     override fun onEndOfSpeech() = Unit
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
+  }
+
+  @RequiresApi(33)
+  private fun downloadModel(context: Context) {
+    try {
+      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+      SpeechRecognizer.createOnDeviceSpeechRecognizer(context).apply {
+        triggerModelDownload(intent)
+        destroy()
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Couldn't ask for the offline model", e)
+    }
+  }
+
+  /** The long-press > Transcribe dialog. A finished transcript also goes to [onTranscript] (stored under the bubble). */
+  @RequiresApi(33)
+  private class Session(private val context: Context, audio: Uri, private val onTranscript: (String) -> Unit) : Listener {
+
+    private var finalText = ""
+
+    private val textView = TextView(context).apply {
+      val pad = (24 * context.resources.displayMetrics.density).toInt()
+      setPadding(pad, pad / 2, pad, 0)
+      setTextIsSelectable(true)
+      textSize = 16f
+      setText(R.string.Transcribe__working)
+    }
+
+    private val dialog: AlertDialog = MaterialAlertDialogBuilder(context)
+      .setTitle(R.string.Transcribe__title)
+      .setView(ScrollView(context).apply { addView(textView) })
+      .setPositiveButton(R.string.Transcribe__copy, null)
+      .setNegativeButton(R.string.Transcribe__close, null)
+      .create()
+
+    private val recognition = Recognition(context, audio, this, askForModel = true)
+
+    fun start() {
+      dialog.setOnShowListener {
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
+          isEnabled = false
+          setOnClickListener {
+            ServiceUtil.getClipboardManager(context).setPrimaryClip(ClipData.newPlainText("transcript", finalText))
+            Toast.makeText(context, R.string.Transcribe__copied, Toast.LENGTH_SHORT).show()
+          }
+        }
+      }
+      dialog.setOnDismissListener { recognition.cancel() }
+      dialog.show()
+      recognition.start()
+    }
+
+    override fun onProgress(text: String) {
+      textView.text = if (text.isEmpty()) context.getString(R.string.Transcribe__working) else text
+    }
+
+    override fun onDone(text: String, error: String?, complete: Boolean) {
+      finalText = text
+      textView.text = when {
+        text.isNotEmpty() -> text
+        error != null -> error
+        else -> context.getString(R.string.Transcribe__nothing)
+      }
+      dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = text.isNotEmpty()
+      if (complete) onTranscript(text)
+    }
   }
 
   /** Decodes [uri] and writes 16 kHz mono 16-bit little-endian PCM to [out]. */

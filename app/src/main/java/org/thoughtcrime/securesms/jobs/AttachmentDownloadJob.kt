@@ -373,6 +373,7 @@ class AttachmentDownloadJob private constructor(
         SignalDatabase.attachments.finalizeAttachmentAfterDownload(messageId, attachmentId, input)
       }
       AutoSaveMedia.onDownloaded(context, messageId, attachmentId) // BACKCHANNEL: save received photos and videos to the gallery
+      net.mikesimone.backchannel.VoiceTranscripts.onDownloaded(context, messageId, attachmentId) // BACKCHANNEL: transcribe voice messages automatically
     } catch (e: RangeException) {
       Log.w(TAG, "[$attachmentId] Range exception, file size " + attachmentFile.length(), e)
       if (attachmentFile.delete()) {

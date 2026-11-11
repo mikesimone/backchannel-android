@@ -21,6 +21,7 @@ Conversations
 On your phone, nothing leaves it
 • Translate a message with your phone's offline translator.
 • Transcribe voice messages on the phone (Android 13 and up).
+• Optional: transcribe incoming voice messages automatically, with the text under each one.
 
 Writing
 • Markdown: *bold*, _italic_, ~strikethrough~, `monospace`, lists, indents, headings, quotes and code blocks, and everyone sees the formatting, Signal users too.

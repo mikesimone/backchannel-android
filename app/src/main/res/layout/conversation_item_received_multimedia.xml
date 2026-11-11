@@ -184,6 +184,18 @@
             android:layout_marginBottom="@dimen/message_bubble_collapsed_footer_padding"
             android:layout="@layout/conversation_item_received_audio" />
 
+        <!-- BACKCHANNEL: voice message transcript (VoiceTranscripts) -->
+        <TextView
+            android:id="@+id/backchannel_voice_transcript"
+            style="@style/Signal.Text.Body"
+            android:layout_width="@dimen/message_audio_width"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/message_bubble_horizontal_padding"
+            android:layout_marginEnd="@dimen/message_bubble_horizontal_padding"
+            android:layout_marginBottom="@dimen/message_bubble_bottom_padding"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
         <ViewStub
             android:id="@+id/document_view_stub"
             android:layout_width="210dp"

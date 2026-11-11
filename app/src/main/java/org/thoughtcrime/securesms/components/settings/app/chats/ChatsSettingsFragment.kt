@@ -269,6 +269,23 @@ private fun ChatsSettingsScreen(
         )
       }
 
+      // BACKCHANNEL: transcribe incoming voice messages on this phone and show the text under them
+      if (Build.VERSION.SDK_INT >= 33) {
+        item {
+          val context = LocalContext.current
+          var autoTranscribe by remember { mutableStateOf(net.mikesimone.backchannel.VoiceTranscripts.isAutoEnabled(context)) }
+          Rows.ToggleRow(
+            text = stringResource(R.string.VoiceTranscripts__auto),
+            label = stringResource(R.string.VoiceTranscripts__auto_summary),
+            checked = autoTranscribe,
+            onCheckChanged = {
+              net.mikesimone.backchannel.VoiceTranscripts.setAutoEnabled(context, it)
+              autoTranscribe = it
+            }
+          )
+        }
+      }
+
       item {
         Dividers.Default()
       }
