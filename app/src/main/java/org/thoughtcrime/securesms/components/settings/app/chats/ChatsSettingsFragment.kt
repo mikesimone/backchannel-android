@@ -10,8 +10,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -243,6 +245,17 @@ private fun ChatsSettingsScreen(
             onClick = callbacks::onOpenSignalLinksClick
           )
         }
+      }
+
+      // BACKCHANNEL: contacts hidden from Backchannel's contact lists and pickers
+      item {
+        val context = LocalContext.current
+        var hiddenSummary by remember { mutableStateOf(net.mikesimone.backchannel.HiddenContacts.summary(context)) }
+        Rows.TextRow(
+          text = stringResource(R.string.HiddenContacts__title),
+          label = hiddenSummary,
+          onClick = { net.mikesimone.backchannel.HiddenContacts.showManager(context) { hiddenSummary = it } }
+        )
       }
 
       item {

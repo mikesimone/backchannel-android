@@ -797,6 +797,21 @@ class ConversationSettingsFragment :
         )
       }
 
+      // BACKCHANNEL: hide this person from Backchannel's contact lists and pickers (not a block)
+      if (state.recipient.isIndividual && !state.recipient.isReleaseNotes && !state.recipient.isSelf) {
+        switchPref(
+          title = DSLSettingsText.from(R.string.HiddenContacts__hide_from_contacts),
+          summary = DSLSettingsText.from(R.string.HiddenContacts__hide_from_contacts_summary),
+          icon = DSLSettingsIcon.from(R.drawable.symbol_person_24),
+          isChecked = net.mikesimone.backchannel.HiddenContacts.isHidden(requireContext(), state.recipient.id),
+          onToggle = { hide ->
+            net.mikesimone.backchannel.HiddenContacts.setHidden(requireContext(), state.recipient.id, hide)
+            true
+          },
+          onClick = { viewModel.state.value?.let { current -> settingsAdapter?.submitList(getConfiguration(current).toMappingModelList()) } }
+        )
+      }
+
       // BACKCHANNEL: blur media until tapped, for this chat (overrides Settings > Chats)
       if (!state.recipient.isReleaseNotes && !state.recipient.isSelf) {
         switchPref(

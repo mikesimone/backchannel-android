@@ -110,6 +110,12 @@ class NewConversationViewModel : ViewModel() {
     }
   }
 
+  // BACKCHANNEL: hide from Backchannel's contact lists (this phone only), then reload the list
+  fun hideInBackchannel(recipient: Recipient) {
+    net.mikesimone.backchannel.HiddenContacts.hideWithToast(AppDependencies.application, recipient)
+    internalUiState.update { it.copy(shouldResetContactsList = true) }
+  }
+
   fun showBlockConfirmation(recipient: Recipient) {
     internalUiState.update {
       it.copy(userMessage = Prompt.ConfirmBlockRecipient(recipient))

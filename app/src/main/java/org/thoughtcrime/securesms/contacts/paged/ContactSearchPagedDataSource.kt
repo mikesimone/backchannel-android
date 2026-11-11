@@ -133,7 +133,7 @@ class ContactSearchPagedDataSource(
     return when (section) {
       is ContactSearchConfiguration.Section.Individuals -> getNonGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, null)
       is ContactSearchConfiguration.Section.Groups -> contactSearchPagedDataSourceRepository.getGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, this::canSendToGroup)
-      is ContactSearchConfiguration.Section.Recents -> getRecentsSearchIterator(section, query).getCollectionSizeAndClose(section, query, null)
+      is ContactSearchConfiguration.Section.Recents -> getRecentsSearchIterator(section, query).getCollectionSizeAndClose(section, query, notHiddenInBackchannel) // BACKCHANNEL
       is ContactSearchConfiguration.Section.Stories -> getStoriesSearchIterator(query).getCollectionSizeAndClose(section, query, null)
       is ContactSearchConfiguration.Section.Arbitrary -> arbitraryRepository?.getSize(section, query) ?: error("Invalid arbitrary section.")
       is ContactSearchConfiguration.Section.GroupMembers -> getGroupMembersSearchIterator(section, query).getCollectionSizeAndClose(section, query, filterByRole(section))
@@ -292,6 +292,11 @@ class ContactSearchPagedDataSource(
     }
   }
 
+  // BACKCHANNEL: recent chats in pickers leave out contacts hidden in Backchannel
+  private val notHiddenInBackchannel: (Cursor) -> Boolean = { cursor ->
+    !net.mikesimone.backchannel.HiddenContacts.isHidden(org.thoughtcrime.securesms.dependencies.AppDependencies.application, org.thoughtcrime.securesms.recipients.RecipientId.from(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID)))
+  }
+
   private fun getRecentsSearchIterator(section: ContactSearchConfiguration.Section.Recents, query: String?): ContactSearchIterator<Cursor> {
     if (!query.isNullOrEmpty()) {
       throw IllegalArgumentException("Searching Recents is not supported")
@@ -360,7 +365,7 @@ class ContactSearchPagedDataSource(
     return getRecentsSearchIterator(section, query).use { records ->
       readContactData(
         records = records,
-        recordsPredicate = null,
+        recordsPredicate = notHiddenInBackchannel, // BACKCHANNEL: hidden contacts
         section = section,
         startIndex = startIndex,
         endIndex = endIndex,

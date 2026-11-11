@@ -352,6 +352,16 @@ private suspend fun showItemContextMenu(
         action = { callbacks.onRemove(recipient) }
       )
       add(removeItem)
+
+      // BACKCHANNEL: hide from Backchannel's contact lists without blocking
+      add(
+        ActionItem(
+          iconRes = R.drawable.symbol_person_24,
+          title = context.getString(R.string.HiddenContacts__hide_contact),
+          tintRes = com.google.android.material.R.attr.colorOnSurface,
+          action = { callbacks.onHideInBackchannel(recipient) }
+        )
+      )
     }
 
     if (!recipient.isSelf) {
@@ -430,6 +440,7 @@ class RecipientPickerCallbacks(
     fun onVideoCall(recipient: Recipient)
     fun onRemove(recipient: Recipient)
     fun onBlock(recipient: Recipient)
+    fun onHideInBackchannel(recipient: Recipient) = Unit // BACKCHANNEL
   }
 
   interface NewConversation {

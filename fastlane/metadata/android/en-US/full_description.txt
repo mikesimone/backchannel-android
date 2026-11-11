@@ -38,6 +38,7 @@ Contacts and privacy
 • Your own photo for anyone, even people not in your contacts.
 • Linked contacts and your contact photos show on your linked computers too (Backchannel Web and Signal Desktop).
 • Lock any chat behind your fingerprint.
+• Hide someone from your contact lists and pickers without blocking them.
 • Optional: accept changed safety numbers without confirming each one (off by default).
 
 EVERYTHING YOU EXPECT

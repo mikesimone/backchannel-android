@@ -151,6 +151,7 @@ private fun NewConversationScreen(
       }
 
       override fun onBlock(recipient: Recipient) = viewModel.showBlockConfirmation(recipient)
+      override fun onHideInBackchannel(recipient: Recipient) = viewModel.hideInBackchannel(recipient) // BACKCHANNEL
       override fun onBlockConfirmed(recipient: Recipient) {
         coroutineScope.launch { viewModel.blockRecipient(recipient) }
       }

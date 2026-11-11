@@ -113,7 +113,7 @@ public class ContactRepository {
 
   @WorkerThread
   public @NonNull Cursor querySignalContacts(@NonNull RecipientTable.ContactSearchQuery contactSearchQuery) {
-    Cursor cursor = TextUtils.isEmpty(contactSearchQuery.getQuery()) ? recipientTable.getSignalContacts(contactSearchQuery.getIncludeSelfMode())
+    Cursor cursor = TextUtils.isEmpty(contactSearchQuery.getQuery()) ? recipientTable.getSignalContactsForPicker(contactSearchQuery.getIncludeSelfMode()) /* BACKCHANNEL: hidden contacts */
                                                                      : recipientTable.querySignalContacts(contactSearchQuery);
 
     return new SearchCursorWrapper(cursor, SEARCH_CURSOR_MAPPERS);

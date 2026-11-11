@@ -3579,14 +3579,19 @@ open class RecipientTable(context: Context, databaseHelper: SignalDatabase) : Da
     }
   }
 
-  private fun getSignalContacts(includeSelfMode: IncludeSelfMode, orderBy: String? = null): Cursor {
+  /** BACKCHANNEL: the contact pickers' list, without contacts hidden in Backchannel. */
+  fun getSignalContactsForPicker(includeSelfMode: IncludeSelfMode): Cursor {
+    return getSignalContacts(includeSelfMode, "$SORT_NAME, $SYSTEM_JOINED_NAME, $SEARCH_PROFILE_NAME, $USERNAME, $E164", excludeBackchannelHidden = true)
+  }
+
+  private fun getSignalContacts(includeSelfMode: IncludeSelfMode, orderBy: String? = null, excludeBackchannelHidden: Boolean = false): Cursor {
     val searchSelection = ContactSearchSelection.Builder()
       .withRegistered(true)
       .withGroups(false)
       .withVerified(true)
       .excludeId(if (includeSelfMode.includeSelf) null else Recipient.self().id)
       .build()
-    val selection = searchSelection.where
+    val selection = searchSelection.where + if (excludeBackchannelHidden) net.mikesimone.backchannel.HiddenContacts.sqlFilter("$TABLE_NAME.$ID") else "" // BACKCHANNEL
     val args = searchSelection.args
 
     return readableDatabase.query(TABLE_NAME, searchProjection(includeSelfMode), selection, args, null, null, orderBy)
@@ -3602,7 +3607,7 @@ open class RecipientTable(context: Context, databaseHelper: SignalDatabase) : Da
       .excludeId(if (contactSearchQuery.includeSelfMode.includeSelf) null else Recipient.self().id)
       .withSearchQuery(query)
       .build()
-    val selection = searchSelection.where
+    val selection = searchSelection.where + net.mikesimone.backchannel.HiddenContacts.sqlFilter("$TABLE_NAME.$ID") // BACKCHANNEL: hidden contacts
     val args = searchSelection.args
     val orderBy = "${if (contactSearchQuery.contactSearchSortOrder == ContactSearchSortOrder.RECENCY) "${ThreadTable.TABLE_NAME}.${ThreadTable.DATE} DESC, " else ""}$SORT_NAME, $SYSTEM_JOINED_NAME, $SEARCH_PROFILE_NAME, $E164"
 
@@ -3694,7 +3699,7 @@ open class RecipientTable(context: Context, databaseHelper: SignalDatabase) : Da
       .build()
 
     val orderBy = orderByPreferringAlphaOverNumeric(SORT_NAME) + ", " + E164
-    return readableDatabase.query(TABLE_NAME, searchProjection(IncludeSelfMode.Exclude), searchSelection.where, searchSelection.args, null, null, orderBy)
+    return readableDatabase.query(TABLE_NAME, searchProjection(IncludeSelfMode.Exclude), searchSelection.where + net.mikesimone.backchannel.HiddenContacts.sqlFilter("$TABLE_NAME.$ID") /* BACKCHANNEL */, searchSelection.args, null, null, orderBy)
   }
 
   fun queryGroupMemberContacts(inputQuery: String): Cursor? {
@@ -3705,7 +3710,7 @@ open class RecipientTable(context: Context, databaseHelper: SignalDatabase) : Da
       .withSearchQuery(query)
       .build()
 
-    val selection = searchSelection.where
+    val selection = searchSelection.where + net.mikesimone.backchannel.HiddenContacts.sqlFilter("$TABLE_NAME.$ID") // BACKCHANNEL: hidden contacts
     val args = searchSelection.args
     val orderBy = orderByPreferringAlphaOverNumeric(SORT_NAME) + ", " + E164
 
@@ -3778,6 +3783,7 @@ open class RecipientTable(context: Context, databaseHelper: SignalDatabase) : Da
     val subquery = """
       SELECT ${searchProjection(IncludeSelfMode.Exclude).joinToString(", ")} FROM $TABLE_NAME
       WHERE $BLOCKED = ? AND $HIDDEN = ? AND $REGISTERED != ? AND NOT EXISTS (SELECT 1 FROM ${ThreadTable.TABLE_NAME} WHERE ${ThreadTable.TABLE_NAME}.${ThreadTable.ACTIVE} = 1 AND ${ThreadTable.TABLE_NAME}.${ThreadTable.RECIPIENT_ID} = $TABLE_NAME.$ID LIMIT 1)
+      ${net.mikesimone.backchannel.HiddenContacts.sqlFilter("$TABLE_NAME.$ID")} -- BACKCHANNEL: hidden contacts
       AND (
           $SORT_NAME GLOB ? OR 
           $USERNAME GLOB ? OR 
