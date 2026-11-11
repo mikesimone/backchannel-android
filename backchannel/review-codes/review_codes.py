@@ -16,6 +16,8 @@ Environment:
   MAILBOX            mailbox to read, e.g. mike@mikesimone.net
   REVIEW_NUMBER      the reviewer number, digits only with country code
   REVIEW_PASSWORD    password for HTTP basic auth (user "reviewer")
+  REVIEW_SIGNAL_PIN  optional: the number's Signal PIN, shown on the page (behind the
+                     same password) for the step after the code
   REVIEW_SIGNAL_PIN  the reviewer account's Signal PIN, shown on the page (optional).
                      Registration lock is on, so "Skip" doesn't work and the
                      reviewer needs the real PIN after the code (Mike 2026-11-09).
@@ -56,6 +58,7 @@ SA_FILE = os.path.expanduser(os.environ["GOOGLE_SA_JSON"])
 MAILBOX = os.environ["MAILBOX"]
 NUMBER = re.sub(r"\D", "", os.environ["REVIEW_NUMBER"])
 PASSWORD = os.environ["REVIEW_PASSWORD"]
+SIGNAL_PIN = os.environ.get("REVIEW_SIGNAL_PIN", "").strip()
 HOST, PORT = os.environ.get("LISTEN", "127.0.0.1:8096").rsplit(":", 1)
 CODE_MAX_AGE = int(os.environ.get("CODE_MAX_AGE_MIN", "15")) * 60
 CLEANUP_HOURS = int(os.environ.get("CLEANUP_HOURS", "24"))
@@ -240,9 +243,18 @@ p {{ color: var(--muted); margin: 12px 0 0; }}
 <body><main>
 <h1>Backchannel: Signal code for +{number}</h1>
 {content}
+{pin}
 <p>This page refreshes itself every 10 seconds.</p>
 </main></body></html>
 """
+
+
+def pin_html():
+    """The Signal PIN for the step after the code, if one is configured."""
+    if not SIGNAL_PIN:
+        return ""
+    return ('<p>After the code, if Backchannel asks for a PIN, enter:</p>'
+            f'<div class="code">{html.escape(SIGNAL_PIN)}</div>')
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -297,7 +309,7 @@ class Handler(BaseHTTPRequestHandler):
             content += ('<p>After the code, Signal asks for a PIN. Enter this one '
                         '(don\'t skip or create a new one):</p>'
                         f'<div class="code">{html.escape(SIGNAL_PIN)}</div>')
-        self.send(200, PAGE.format(number=NUMBER, content=content))
+        self.send(200, PAGE.format(number=NUMBER, content=content, pin=pin_html()))
 
 
 if __name__ == "__main__":
