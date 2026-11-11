@@ -26,13 +26,13 @@ On your phone, nothing leaves it
 • Optional: transcribe incoming voice messages automatically, with the text under each one.
 
 Writing
-• Markdown: *bold*, _italic_, ~strikethrough~, `monospace`, lists, indents, headings, quotes and code blocks, and everyone sees the formatting, Signal users too.
+• Markdown: *bold*, _italic_, ~strikethrough~, `monospace`, lists, indents, headings, quotes and code blocks, and Signal users see the formatting too.
 • Bold italic in one step from the format menu.
 • Copying a styled message gives you styled text you can paste anywhere, even into a text message.
 • Typed :) ;) :( turn into emoji, and one default emoji skin tone.
 
 Photos
-• Attach photos and videos from your own Immich server (sign in with its own login or single sign-on; a home address is used on your home network), or share from Immich.
+• Attach from your own Immich server (its own login or single sign-on; uses your home address when you're home), or share from Immich.
 • Attach through Google Photos or any photo app that lets you pick.
 • The photo viewer stays inside the message you opened.
 • Blur received photos and videos until you tap them, in every chat or just the ones you pick.
