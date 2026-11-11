@@ -98,6 +98,11 @@
   <string name="Immich__bad_home_address">That home address doesn\'t look right</string>
   <string name="Immich__needs_https">The server address needs https. A plain http address can go in Address at home.</string>
   <string name="AttachmentKeyboard_immich_app">Immich app</string>
+  <string name="Immich__sign_in_browser">Sign in with browser (for Google and other single sign-on)</string>
+  <string name="Immich__sign_in_browser_help">Works wherever the Immich phone app\'s sign-in works. If Android asks which app to open, pick Backchannel.</string>
+  <string name="Immich__google_needs_browser">Google doesn\'t allow signing in inside apps, so this sign-in continues in your browser.</string>
+  <string name="Immich__sso_not_enabled">This server doesn\'t have single sign-on turned on</string>
+  <string name="Immich__no_browser">No browser to sign in with</string>
   <string name="Backchannel__welcome_move_over">Moving over from Signal? In Signal, make an on-device backup (Settings &gt; Backups) and write down its 30-digit code. Here, tap Restore or transfer and pick that backup. Then disable or uninstall Signal on this phone.</string>
   <string name="Backchannel__auto_accept_safety_numbers">Accept changed safety numbers</string>
   <string name="Backchannel__auto_accept_safety_numbers_summary">When someone\'s safety number changes, like on a new phone, keep sending without asking you to confirm. The chat still shows that it changed.</string>

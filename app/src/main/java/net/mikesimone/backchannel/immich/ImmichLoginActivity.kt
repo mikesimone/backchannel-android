@@ -62,6 +62,10 @@ import org.thoughtcrime.securesms.util.DynamicTheme
  *
  * The server's cookies and web storage are cleared before and after, so no
  * second copy of the session stays in the WebView.
+ *
+ * If the sign-in heads to Google (directly or behind another provider such as
+ * Cloudflare Access), which refuses sign-in inside apps ("disallowed_useragent"),
+ * it stops and asks the caller to use the browser instead ([ImmichBrowserSso]).
  */
 class ImmichLoginActivity : AppCompatActivity() {
 
@@ -140,6 +144,10 @@ class ImmichLoginActivity : AppCompatActivity() {
       override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         if (!request.isForMainFrame) return false
         val url = request.url.toString()
+        if (ImmichBrowserSso.isGoogleSignIn(url)) {
+          useBrowser()
+          return true
+        }
         if (ImmichUrls.isOAuthReturn(server, url)) {
           completeOAuth(url)
           return true
@@ -151,7 +159,10 @@ class ImmichLoginActivity : AppCompatActivity() {
 
       override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         progress = true
-        if (ImmichUrls.isOAuthReturn(server, url)) {
+        if (ImmichBrowserSso.isGoogleSignIn(url)) {
+          view.stopLoading()
+          useBrowser()
+        } else if (ImmichUrls.isOAuthReturn(server, url)) {
           view.stopLoading()
           completeOAuth(url)
         }
@@ -202,6 +213,16 @@ class ImmichLoginActivity : AppCompatActivity() {
     tokenFromCookie()?.let { done(it) }
   }
 
+  private fun useBrowser() {
+    if (finishing) return
+    finishing = true
+    handler.removeCallbacks(poll)
+    webView?.stopLoading()
+    clearServerData(server)
+    setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_USE_BROWSER, true))
+    finish()
+  }
+
   private fun done(token: String) {
     if (finishing) return
     finishing = true
@@ -223,6 +244,7 @@ class ImmichLoginActivity : AppCompatActivity() {
   companion object {
     private const val EXTRA_SERVER = "backchannel_immich_server"
     private const val EXTRA_TOKEN = "backchannel_immich_token"
+    private const val EXTRA_USE_BROWSER = "backchannel_immich_use_browser"
 
     /** Expires every cookie the WebView holds for [server] and drops its web storage. */
     fun clearServerData(server: String) {
@@ -240,13 +262,16 @@ class ImmichLoginActivity : AppCompatActivity() {
     }
   }
 
-  /** Input: the main server address. Output: the session token, or null if cancelled. */
-  object Contract : ActivityResultContract<String, String?>() {
+  /** [token] after a sign-in; [useBrowser] when the provider needs the browser; neither if cancelled. */
+  data class Result(val token: String?, val useBrowser: Boolean)
+
+  /** Input: the main server address. */
+  object Contract : ActivityResultContract<String, Result>() {
     override fun createIntent(context: Context, input: String): Intent = Intent(context, ImmichLoginActivity::class.java).putExtra(EXTRA_SERVER, input)
 
-    override fun parseResult(resultCode: Int, intent: Intent?): String? {
-      if (resultCode != Activity.RESULT_OK) return null
-      return intent?.getStringExtra(EXTRA_TOKEN)
+    override fun parseResult(resultCode: Int, intent: Intent?): Result {
+      if (resultCode != Activity.RESULT_OK || intent == null) return Result(null, false)
+      return Result(intent.getStringExtra(EXTRA_TOKEN), intent.getBooleanExtra(EXTRA_USE_BROWSER, false))
     }
   }
 }

@@ -1,18 +1,21 @@
 package net.mikesimone.backchannel.immich
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.LruCache
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,6 +48,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -96,7 +100,9 @@ import java.io.File
  * Backchannel, Mike 2026-11-11: the connect screen signs in through the
  * server's own login page ([ImmichLoginActivity]), with an API key as the
  * advanced option, and takes an optional address at home. A 401 later shows
- * "Signed out of Immich" with a button to sign in again.
+ * "Signed out of Immich" with a button to sign in again. "Sign in with
+ * browser" uses [ImmichBrowserSso] for providers that block WebViews (Google);
+ * the WebView sign-in switches to it by itself when it reaches Google.
  */
 class ImmichPickerActivity : AppCompatActivity() {
 
@@ -105,6 +111,7 @@ class ImmichPickerActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     viewModel.start(this)
+    viewModel.checkBrowserSso()
     setContent {
       SignalTheme(isDarkMode = DynamicTheme.isDarkTheme(LocalContext.current)) {
         ImmichScreen(
@@ -117,6 +124,16 @@ class ImmichPickerActivity : AppCompatActivity() {
         )
       }
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    viewModel.checkBrowserSso()
+  }
+
+  override fun onResume() {
+    super.onResume()
+    viewModel.checkBrowserSso()
   }
 
   companion object {
@@ -223,10 +240,68 @@ class ImmichPickerViewModel : ViewModel() {
     return savedServer
   }
 
-  /** [token] from [ImmichLoginActivity], or null if the user backed out. */
-  fun finishSignIn(token: String?) {
+  /** Set to a provider address the screen should open in the browser (then cleared). */
+  var openBrowser by mutableStateOf<String?>(null)
+  var browserNote by mutableStateOf(false)
+  private var finishingSso = false
+
+  /** Browser sign-in (for Google and other providers that block WebViews), the way Immich's phone app signs in. */
+  fun beginBrowserSignIn(server: String, home: String) {
+    if (beginSignIn(server, home) != null) startBrowserSso()
+  }
+
+  fun beginBrowserSignInAgain() {
+    if (beginSignInAgain() != null) startBrowserSso()
+  }
+
+  private fun startBrowserSso() {
     val addresses = pending ?: return
-    if (token == null) return
+    busy = true
+    error = null
+    viewModelScope.launch {
+      try {
+        openBrowser = withContext(Dispatchers.IO) { ImmichClient.startBrowserSso(appContext, addresses) }
+      } catch (e: Exception) {
+        Log.w(TAG, "Couldn't start the browser sign-in", e)
+        error = message(e)
+      } finally {
+        busy = false
+      }
+    }
+  }
+
+  /** Finishes a browser sign-in once the browser came back to [ImmichOAuthCallbackActivity]. */
+  fun checkBrowserSso() {
+    if (!::appContext.isInitialized || finishingSso) return
+    val sso = ImmichClient.pendingSso(appContext) ?: return
+    if (sso.callbackUrl == null) return
+    finishingSso = true
+    busy = true
+    error = null
+    viewModelScope.launch {
+      try {
+        withContext(Dispatchers.IO) { ImmichClient.finishBrowserSso(appContext, sso) }
+        browserNote = false
+        onConnected()
+      } catch (e: Exception) {
+        Log.w(TAG, "Couldn't finish the browser sign-in", e)
+        error = appContext.getString(R.string.Immich__sign_in_failed)
+      } finally {
+        busy = false
+        finishingSso = false
+      }
+    }
+  }
+
+  /** [result] from [ImmichLoginActivity]. */
+  fun finishSignIn(result: ImmichLoginActivity.Result) {
+    if (result.useBrowser) {
+      browserNote = true
+      startBrowserSso()
+      return
+    }
+    val addresses = pending ?: return
+    val token = result.token ?: return
     busy = true
     error = null
     viewModelScope.launch {
@@ -403,7 +478,13 @@ class ImmichPickerViewModel : ViewModel() {
 @Composable
 private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, onDone: (List<Uri>) -> Unit) {
   var menu by remember { mutableStateOf(false) }
-  val signIn = rememberLauncherForActivityResult(ImmichLoginActivity.Contract) { token -> viewModel.finishSignIn(token) }
+  val signIn = rememberLauncherForActivityResult(ImmichLoginActivity.Contract) { result -> viewModel.finishSignIn(result) }
+  val context = LocalContext.current
+  LaunchedEffect(viewModel.openBrowser) {
+    val url = viewModel.openBrowser ?: return@LaunchedEffect
+    viewModel.openBrowser = null
+    openInBrowser(context, url)
+  }
   val startSignIn: (String?) -> Unit = { server -> if (server != null) signIn.launch(server) }
 
   BackHandler(enabled = viewModel.openAlbum != null) { viewModel.open(null) }
@@ -453,9 +534,13 @@ private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, 
         .fillMaxSize()
     ) {
       if (viewModel.signedOut) {
-        SignedOutScreen(viewModel) { startSignIn(viewModel.beginSignInAgain()) }
+        SignedOutScreen(viewModel, onSignIn = { startSignIn(viewModel.beginSignInAgain()) }, onBrowser = { viewModel.beginBrowserSignInAgain() })
       } else if (!viewModel.connected) {
-        SetupScreen(viewModel) { server, home -> startSignIn(viewModel.beginSignIn(server, home)) }
+        SetupScreen(
+          viewModel,
+          onSignIn = { server, home -> startSignIn(viewModel.beginSignIn(server, home)) },
+          onBrowser = { server, home -> viewModel.beginBrowserSignIn(server, home) }
+        )
       } else {
         if (viewModel.openAlbum == null) {
           TabRow(selectedTabIndex = viewModel.tab) {
@@ -479,7 +564,7 @@ private fun ImmichScreen(viewModel: ImmichPickerViewModel, onClose: () -> Unit, 
 }
 
 @Composable
-private fun SetupScreen(viewModel: ImmichPickerViewModel, onSignIn: (server: String, home: String) -> Unit) {
+private fun SetupScreen(viewModel: ImmichPickerViewModel, onSignIn: (server: String, home: String) -> Unit, onBrowser: (server: String, home: String) -> Unit) {
   var server by remember { mutableStateOf(viewModel.savedServer) }
   var home by remember { mutableStateOf(viewModel.savedHome) }
   var key by remember { mutableStateOf("") }
@@ -511,12 +596,17 @@ private fun SetupScreen(viewModel: ImmichPickerViewModel, onSignIn: (server: Str
       keyboardActions = KeyboardActions(onDone = { if (server.isNotBlank()) onSignIn(server, home) }),
       modifier = Modifier.fillMaxWidth()
     )
+    if (viewModel.browserNote) Text(stringResource(R.string.Immich__google_needs_browser), style = MaterialTheme.typography.bodyMedium)
     viewModel.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     if (!useKey) {
       Button(onClick = { onSignIn(server, home) }, enabled = !viewModel.busy && server.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
         if (viewModel.busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.Immich__sign_in))
       }
       Text(stringResource(R.string.Immich__sign_in_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      OutlinedButton(onClick = { onBrowser(server, home) }, enabled = !viewModel.busy && server.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.Immich__sign_in_browser))
+      }
+      Text(stringResource(R.string.Immich__sign_in_browser_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       TextButton(onClick = { useKey = true }) { Text(stringResource(R.string.Immich__use_api_key)) }
     } else {
       OutlinedTextField(
@@ -539,7 +629,7 @@ private fun SetupScreen(viewModel: ImmichPickerViewModel, onSignIn: (server: Str
 }
 
 @Composable
-private fun SignedOutScreen(viewModel: ImmichPickerViewModel, onSignIn: () -> Unit) {
+private fun SignedOutScreen(viewModel: ImmichPickerViewModel, onSignIn: () -> Unit, onBrowser: () -> Unit) {
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -552,7 +642,18 @@ private fun SignedOutScreen(viewModel: ImmichPickerViewModel, onSignIn: () -> Un
     Button(onClick = onSignIn, enabled = !viewModel.busy) {
       if (viewModel.busy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.Immich__sign_in_again))
     }
+    OutlinedButton(onClick = onBrowser, enabled = !viewModel.busy) { Text(stringResource(R.string.Immich__sign_in_browser)) }
+    Text(stringResource(R.string.Immich__sign_in_browser_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     TextButton(onClick = { viewModel.signOut() }) { Text(stringResource(R.string.Immich__sign_out)) }
+  }
+}
+
+/** Opens [url] in a Custom Tab (or any browser if none supports them). */
+private fun openInBrowser(context: Context, url: String) {
+  try {
+    CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(url))
+  } catch (e: ActivityNotFoundException) {
+    Toast.makeText(context, R.string.Immich__no_browser, Toast.LENGTH_LONG).show()
   }
 }
 

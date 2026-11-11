@@ -141,6 +141,7 @@ androidx-documentfile = "androidx.documentfile:documentfile:1.0.1"
 androidx-credentials = "androidx.credentials:credentials:1.6.0"
 androidx-splashscreen = "androidx.core:core-splashscreen:1.0.1"
 androidx-webkit = "androidx.webkit:webkit:1.4.0"
+androidx-browser = "androidx.browser:browser:1.8.0"
 
 # Billing
 material-material = "com.google.android.material:material:1.12.0"

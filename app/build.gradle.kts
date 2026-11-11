@@ -449,6 +449,7 @@ dependencies {
   implementation(libs.androidx.emoji2)
   implementation(libs.androidx.splashscreen)
   implementation(libs.androidx.webkit)
+  implementation(libs.androidx.browser) // BACKCHANNEL: Custom Tabs for Immich single sign-on
   implementation(libs.firebase.messaging) {
     exclude(group = "com.google.firebase", module = "firebase-core")
     exclude(group = "com.google.firebase", module = "firebase-analytics")

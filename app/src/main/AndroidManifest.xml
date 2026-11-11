@@ -922,6 +922,22 @@
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Signal.DayNight.NoActionBar" />
 
+        <!-- BACKCHANNEL: end of an Immich browser sign-in, at the same return address Immich's own app uses
+             (app.immich:///oauth-callback). Returns not matching the sign-in in progress are ignored. -->
+        <activity
+            android:name="net.mikesimone.backchannel.immich.ImmichOAuthCallbackActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app.immich" />
+            </intent-filter>
+        </activity>
+
         <!-- BACKCHANNEL: Immich sign-in through the server's own web login page -->
         <activity
             android:name="net.mikesimone.backchannel.immich.ImmichLoginActivity"

@@ -32,7 +32,9 @@ import java.util.concurrent.TimeUnit
  * option. An optional "address at home" is used automatically when it answers
  * (see [ImmichRouter]); it may be plain http, which is allowed for that one
  * address only. Addresses and the token or key stay on this phone, in
- * app-private preferences. Uses the deprecated-but-supported page-based search
+ * app-private preferences. For providers that block sign-in inside apps
+ * (Google), [ImmichBrowserSso] signs in through the browser instead, the way
+ * Immich's own phone app does. Uses the deprecated-but-supported page-based search
  * so it works with Immich 1.x through 3.x.
  */
 object ImmichClient {
@@ -40,6 +42,7 @@ object ImmichClient {
   private val TAG = Log.tag(ImmichClient::class.java)
 
   private const val PREFS = "backchannel_immich"
+  private const val SSO_PREFS = "backchannel_immich_sso"
   private const val KEY_SERVER = "server"
   private const val KEY_HOME = "home"
   private const val KEY_API_KEY = "api_key"
@@ -126,6 +129,7 @@ object ImmichClient {
       }
     }
     p.edit().clear().apply()
+    clearSso(context)
     ImmichRouter.invalidate()
   }
 
@@ -204,6 +208,86 @@ object ImmichClient {
       .build()
     val json = JSONObject(client.newCall(request).execute().use { text(it, Auth.SESSION) })
     return json.optString("accessToken").ifBlank { throw ImmichException("Immich didn't send a sign-in token") }
+  }
+
+  /** A browser sign-in in progress ([ImmichBrowserSso]). [callbackUrl] is set once the browser came back. */
+  data class PendingSso(val addresses: Addresses, val state: String, val codeVerifier: String, val startedAt: Long, val callbackUrl: String?)
+
+  private fun ssoPrefs(context: Context) = context.applicationContext.getSharedPreferences(SSO_PREFS, Context.MODE_PRIVATE)
+
+  /**
+   * Starts a browser sign-in like Immich's phone app does and remembers it
+   * (in app-private preferences, so it survives the app being closed while
+   * the browser is open). Returns the provider address to open.
+   */
+  @WorkerThread
+  fun startBrowserSso(context: Context, addresses: Addresses): String {
+    val state = ImmichBrowserSso.newState()
+    val verifier = ImmichBrowserSso.newCodeVerifier()
+    val body = JSONObject()
+      .put("redirectUri", ImmichBrowserSso.REDIRECT_URI)
+      .put("state", state)
+      .put("codeChallenge", ImmichBrowserSso.codeChallenge(verifier))
+    val request = Request.Builder().url(url(addresses.main, "oauth/authorize"))
+      .header("Accept", "application/json")
+      .post(body.toString().toRequestBody("application/json".toMediaType()))
+      .build()
+    val response = client.newCall(request).execute().use { response ->
+      val text = response.body.string()
+      if (response.code == 400) throw ImmichException(context.getString(R.string.Immich__sso_not_enabled), 400)
+      if (!response.isSuccessful) throw error(response.code, Auth.SESSION)
+      JSONObject(text)
+    }
+    val providerUrl = response.optString("url").ifBlank { throw ImmichException(context.getString(R.string.Immich__sso_not_enabled)) }
+    ssoPrefs(context).edit().clear()
+      .putString("main", addresses.main)
+      .putString("home", addresses.home)
+      .putString("state", ImmichBrowserSso.expectedState(providerUrl, state))
+      .putString("verifier", verifier)
+      .putLong("started", System.currentTimeMillis())
+      .apply()
+    return providerUrl
+  }
+
+  fun pendingSso(context: Context): PendingSso? {
+    val p = ssoPrefs(context)
+    val main = p.getString("main", null) ?: return null
+    val state = p.getString("state", null) ?: return null
+    val verifier = p.getString("verifier", null) ?: return null
+    val started = p.getLong("started", 0)
+    if (System.currentTimeMillis() - started !in 0..ImmichBrowserSso.MAX_AGE_MS) {
+      clearSso(context)
+      return null
+    }
+    return PendingSso(Addresses(main, p.getString("home", null)), state, verifier, started, p.getString("callback", null))
+  }
+
+  /** The browser came back with [url]. Kept only if it belongs to the sign-in in progress. */
+  fun deliverSsoCallback(context: Context, url: String): Boolean {
+    val pending = pendingSso(context) ?: return false
+    if (pending.callbackUrl != null) return false
+    if (!ImmichBrowserSso.accepts(url, pending.state, pending.startedAt, System.currentTimeMillis())) return false
+    ssoPrefs(context).edit().putString("callback", ImmichBrowserSso.normalizeCallback(url)).commit()
+    return true
+  }
+
+  fun clearSso(context: Context) {
+    ssoPrefs(context).edit().clear().apply()
+  }
+
+  /** Finishes a browser sign-in that came back: token from POST /oauth/callback, then saved like any sign-in. */
+  @WorkerThread
+  fun finishBrowserSso(context: Context, pending: PendingSso): String {
+    val callbackUrl = pending.callbackUrl ?: throw ImmichException(context.getString(R.string.Immich__sign_in_failed))
+    clearSso(context)
+    val body = JSONObject().put("url", callbackUrl).put("state", pending.state).put("codeVerifier", pending.codeVerifier)
+    val request = Request.Builder().url(url(pending.addresses.main, "oauth/callback"))
+      .header("Accept", "application/json")
+      .post(body.toString().toRequestBody("application/json".toMediaType()))
+      .build()
+    val json = JSONObject(client.newCall(request).execute().use { text(it, Auth.SESSION) })
+    val token = json.optString("accessToken").ifBlank { throw ImmichException("Immich didn't send a sign-in token") }
+    return connectWithSession(context, pending.addresses, token)
   }
 
   /** Probes the home address now (called as an Immich screen opens). */
