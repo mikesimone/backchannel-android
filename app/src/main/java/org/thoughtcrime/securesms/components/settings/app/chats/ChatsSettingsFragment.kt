@@ -258,6 +258,17 @@ private fun ChatsSettingsScreen(
         )
       }
 
+      // BACKCHANNEL: away message for 1:1 chats
+      item {
+        val context = LocalContext.current
+        var autoReplySummary by remember { mutableStateOf(net.mikesimone.backchannel.AutoReply.summary(context)) }
+        Rows.TextRow(
+          text = stringResource(R.string.AutoReply__title),
+          label = autoReplySummary,
+          onClick = { net.mikesimone.backchannel.AutoReply.edit(context) { autoReplySummary = it } }
+        )
+      }
+
       item {
         Dividers.Default()
       }

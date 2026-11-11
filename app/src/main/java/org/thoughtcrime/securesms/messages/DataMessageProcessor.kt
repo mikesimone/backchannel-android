@@ -891,6 +891,7 @@ object DataMessageProcessor {
         }
 
         AppDependencies.messageNotifier.updateNotification(context, ConversationId.forConversation(insertResult.threadId))
+        net.mikesimone.backchannel.AutoReply.onIncomingMessage(context, senderRecipient, threadRecipient, groupId != null, message.body, insertResult.threadId) // BACKCHANNEL: auto reply
         TrimThreadJob.enqueueAsync(insertResult.threadId)
 
         if (message.isViewOnce == true) {
@@ -946,6 +947,7 @@ object DataMessageProcessor {
         batchCache.addIncomingMessageInsertThreadUpdate(insertResult.threadId)
       }
       AppDependencies.messageNotifier.updateNotification(context, ConversationId.forConversation(insertResult.threadId))
+      net.mikesimone.backchannel.AutoReply.onIncomingMessage(context, senderRecipient, threadRecipient, groupId != null, body, insertResult.threadId) // BACKCHANNEL: auto reply
       insertResult
     } else {
       null
