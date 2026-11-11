@@ -30,6 +30,7 @@ Photos
 • Attach photos and videos straight from your own Immich server, or share from Immich to Backchannel.
 • Attach through Google Photos or any photo app that lets you pick.
 • The photo viewer stays inside the message you opened.
+• Blur received photos and videos until you tap them, in every chat or just the ones you pick.
 
 Contacts and privacy
 • Link anyone to a phone contact, even if they hide their number, and it stays linked.

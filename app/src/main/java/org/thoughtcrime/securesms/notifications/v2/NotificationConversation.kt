@@ -8,6 +8,7 @@ import android.net.Uri
 import android.text.SpannableStringBuilder
 import androidx.core.app.TaskStackBuilder
 import net.mikesimone.backchannel.ChatLock
+import net.mikesimone.backchannel.MediaBlur
 import org.signal.core.util.PendingIntentFlags
 import org.signal.core.util.Util
 import org.signal.core.util.logging.Log
@@ -63,7 +64,7 @@ data class NotificationConversation(
   }
 
   fun getSlideBigPictureUri(context: Context): Uri? {
-    return if (notificationItems.size == 1 && SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !KeyCachingService.isLocked() && !ChatLock.isLocked(context, recipient.id)) { // BACKCHANNEL
+    return if (notificationItems.size == 1 && SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !KeyCachingService.isLocked() && !ChatLock.isLocked(context, recipient.id) && !MediaBlur.isEnabled(context, recipient.id)) { // BACKCHANNEL: locked chats, blurred media
       mostRecentNotification.getBigPictureUri()
     } else {
       null

@@ -95,6 +95,11 @@ class ChatsSettingsFragment : ComposeFragment() {
       viewModel.setEnterKeySends(enabled)
     }
 
+    // BACKCHANNEL: blur media until tapped
+    override fun onBlurMediaChanged(enabled: Boolean) {
+      viewModel.setBlurMedia(enabled)
+    }
+
     // BACKCHANNEL: system "Open by default" page, where signal.me / signal.group links can be allowed
     override fun onOpenSignalLinksClick() {
       if (Build.VERSION.SDK_INT >= 31) {
@@ -155,6 +160,7 @@ private interface ChatsSettingsCallbacks : ChatExportCallbacks {
   fun onEnterKeySendsChanged(enabled: Boolean) = Unit
   fun onDefaultSkinToneClick(current: Int) = Unit
   fun onOpenSignalLinksClick() = Unit
+  fun onBlurMediaChanged(enabled: Boolean) = Unit // BACKCHANNEL
   fun onExportPlaintextChatHistoryClick() = Unit
   fun onCancelInFlightExport() = Unit
 
@@ -231,6 +237,24 @@ private fun ChatsSettingsScreen(
             onClick = callbacks::onOpenSignalLinksClick
           )
         }
+      }
+
+      item {
+        Dividers.Default()
+      }
+
+      // BACKCHANNEL: received photos and videos. Each chat can override these in its chat settings.
+      item {
+        Texts.SectionHeader(stringResource(R.string.ChatsSettingsFragment__received_media))
+      }
+
+      item {
+        Rows.ToggleRow(
+          text = stringResource(R.string.MediaBlur__blur_all),
+          label = stringResource(R.string.MediaBlur__blur_all_summary),
+          checked = state.blurMedia,
+          onCheckChanged = callbacks::onBlurMediaChanged
+        )
       }
 
       item {

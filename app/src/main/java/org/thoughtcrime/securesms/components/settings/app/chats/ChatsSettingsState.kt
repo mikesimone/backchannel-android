@@ -17,7 +17,8 @@ data class ChatsSettingsState(
   val plaintextExportProgress: LocalBackupCreationProgress = LocalExportProgress.plaintextProgress.value,
   val chatExportState: ChatExportState = ChatExportState.None,
   val includeMediaInExport: Boolean = false,
-  val defaultSkinTone: Int = 0 // BACKCHANNEL
+  val defaultSkinTone: Int = 0, // BACKCHANNEL
+  val blurMedia: Boolean = false // BACKCHANNEL: blur media until tapped
 ) {
   fun isRegisteredAndUpToDate(): Boolean {
     return !userUnregistered && !clientDeprecated

@@ -363,6 +363,7 @@ final class MediaGalleryAllAdapter extends StickyHeaderGridAdapter {
         imageFileSize.setVisibility(View.GONE);
       }
 
+      net.mikesimone.backchannel.MediaBlur.bind(context, slide, mediaRecord.getThreadRecipientId(), mediaRecord.isOutgoing()); // BACKCHANNEL: blur media until tapped
       thumbnailView.setImageResource(requestManager, slide, false, false);
       thumbnailView.setOnClickListener(view -> {
         MediaPreviewCache.INSTANCE.setDrawable(thumbnailView.getImageDrawable());
@@ -649,6 +650,7 @@ final class MediaGalleryAllAdapter extends StickyHeaderGridAdapter {
     public void bind(@NonNull Context context, @NonNull MediaTable.MediaRecord mediaRecord, @NonNull Slide slide) {
       super.bind(context, mediaRecord, slide);
       this.slide = slide;
+      net.mikesimone.backchannel.MediaBlur.bind(context, slide, mediaRecord.getThreadRecipientId(), mediaRecord.isOutgoing()); // BACKCHANNEL: blur media until tapped
       thumbnailView.setImageResource(requestManager, slide, false, false);
       thumbnailView.setOnClickListener(view -> itemClickListener.onMediaClicked(thumbnailView, mediaRecord));
       thumbnailView.setOnLongClickListener(view -> onLongClick());

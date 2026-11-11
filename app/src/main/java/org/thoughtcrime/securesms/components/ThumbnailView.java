@@ -44,6 +44,7 @@ import org.signal.blurhash.BlurHash;
 import org.signal.core.ui.view.Stub;
 import org.signal.glide.decryptableuri.DecryptableUri;
 import org.signal.glide.load.SignalDownsampleStrategy;
+import net.mikesimone.backchannel.MediaBlur;
 import org.thoughtcrime.securesms.R;
 import org.thoughtcrime.securesms.attachments.Attachment;
 import org.thoughtcrime.securesms.attachments.DatabaseAttachment;
@@ -103,6 +104,8 @@ public class ThumbnailView extends FrameLayout {
   private       SlidesClickedListener     cancelTransferClickListener = null;
   private       SlideClickListener        playVideoClickListener      = null;
   private       Slide                     slide                       = null;
+  private       boolean                   blurApplied                 = false; // BACKCHANNEL: blur media until tapped
+  private       RequestManager            blurRequestManager          = null;  // BACKCHANNEL
 
 
   public ThumbnailView(Context context) {
@@ -347,6 +350,7 @@ public class ThumbnailView extends FrameLayout {
   {
     if (slide.asAttachment().isPermanentlyFailed()) {
       this.slide = slide;
+      this.blurApplied = false; // BACKCHANNEL
 
       transferControlViewStub.setVisibility(View.GONE);
       playOverlay.setVisibility(View.GONE);
@@ -405,7 +409,9 @@ public class ThumbnailView extends FrameLayout {
       this.playOverlay.setVisibility(View.GONE);
     }
 
-    if (hasSameContents(this.slide, slide)) {
+    boolean blur = MediaBlur.shouldBlur(slide); // BACKCHANNEL: blur media until tapped
+
+    if (hasSameContents(this.slide, slide) && blur == blurApplied) {
       Log.i(TAG, "Not re-loading slide " + slide.asAttachment().getDisplayUri());
       return new SettableFuture<>(false);
     }
@@ -414,7 +420,8 @@ public class ThumbnailView extends FrameLayout {
         this.slide.isInProgress() == slide.isInProgress() &&
         image.getDrawable() != null &&
         (!slide.hasVideo() || Util.equals(this.slide.getUri(), slide.getUri())) &&
-        Util.equals(this.slide.getFastPreflightId(), slide.getFastPreflightId()))
+        Util.equals(this.slide.getFastPreflightId(), slide.getFastPreflightId()) &&
+        blur == blurApplied) // BACKCHANNEL
     {
       Log.i(TAG, "Not re-loading slide for fast preflight: " + slide.getFastPreflightId());
       this.slide = slide;
@@ -455,6 +462,9 @@ public class ThumbnailView extends FrameLayout {
     BlurHash previousBlurHash = this.slide != null ? this.slide.getPlaceholderBlur() : null;
 
     this.slide = slide;
+
+    this.blurApplied        = blur;           // BACKCHANNEL
+    this.blurRequestManager = requestManager; // BACKCHANNEL
 
     this.captionIcon.setVisibility(slide.getCaption().isPresent() ? VISIBLE : GONE);
 
@@ -517,6 +527,7 @@ public class ThumbnailView extends FrameLayout {
     SettableFuture<Boolean> future = new SettableFuture<>();
 
     transferControlViewStub.setVisibility(View.GONE);
+    blurApplied = false; // BACKCHANNEL
 
     Object glideModel = uri;
     if (PartAuthority.isLocalUri(uri)) {
@@ -554,6 +565,7 @@ public class ThumbnailView extends FrameLayout {
     SettableFuture<Boolean> future = new SettableFuture<>();
 
     transferControlViewStub.setVisibility(View.GONE);
+    blurApplied = false; // BACKCHANNEL
 
     RequestBuilder<Drawable> request = requestManager.load(model)
                                                   .diskCacheStrategy(DiskCacheStrategy.NONE)
@@ -622,6 +634,10 @@ public class ThumbnailView extends FrameLayout {
                                                               .downsample(SignalDownsampleStrategy.CENTER_OUTSIDE_NO_UPSCALE)
                                                               .transition(withCrossFade()));
 
+    if (blurApplied) { // BACKCHANNEL: blur media until tapped
+      requestBuilder = requestBuilder.transform(MediaBlur.transformation(getContext()));
+    }
+
     if (slide.isInProgress()) {
       return requestBuilder;
     } else {
@@ -632,6 +648,7 @@ public class ThumbnailView extends FrameLayout {
   public void clear(RequestManager requestManager) {
     requestManager.clear(image);
     image.setImageDrawable(null);
+    blurApplied = false; // BACKCHANNEL
 
     if (transferControlViewStub.resolved()) {
       transferControlViewStub.get().clear();
@@ -696,7 +713,9 @@ public class ThumbnailView extends FrameLayout {
     }
 
     final RequestBuilder<Bitmap> resizedRequest = applySizing(bitmap.diskCacheStrategy(DiskCacheStrategy.NONE));
-    if (thumbnailUri != null) {
+    if (thumbnailUri != null && blurApplied) { // BACKCHANNEL: blur media until tapped
+      return resizedRequest.transform(MediaBlur.transformation(getContext()));
+    } else if (thumbnailUri != null) {
       return resizedRequest.centerCrop();
     } else {
       return resizedRequest;
@@ -740,12 +759,31 @@ public class ThumbnailView extends FrameLayout {
   private class ThumbnailClickDispatcher implements View.OnClickListener {
     @Override
     public void onClick(View view) {
+      if (blurApplied && slide != null && blurRequestManager != null) { // BACKCHANNEL: first tap shows a blurred item
+        revealBlurred();
+        return;
+      }
+
       boolean controlsVisible = transferControlViewStub.getVisibility() == View.VISIBLE && !transferControlViewStub.get().isGone();
       if (thumbnailClickListener != null && !controlsVisible) {
         thumbnailClickListener.onClick(view, slide);
       } else if (parentClickListener != null) {
         parentClickListener.onClick(view);
       }
+    }
+  }
+
+  /** BACKCHANNEL: blur media until tapped. Reloads the current item without the blur. */
+  private void revealBlurred() {
+    MediaBlur.reveal(slide);
+    blurApplied = false;
+
+    if (slide.hasThumbnail()) {
+      buildArchiveThumbnailRequestBuilder(blurRequestManager, slide).into(new GlideBitmapListeningTarget(blurHash, new SettableFuture<>()));
+    }
+
+    if (slide.getDisplayUri() != null) {
+      buildThumbnailRequestBuilder(blurRequestManager, slide).into(new GlideDrawableListeningTarget(image, new SettableFuture<>()));
     }
   }
 

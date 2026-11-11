@@ -9,6 +9,7 @@ import android.text.TextUtils
 import androidx.annotation.StringRes
 import androidx.core.graphics.drawable.IconCompat
 import net.mikesimone.backchannel.ChatLock
+import net.mikesimone.backchannel.MediaBlur
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.util.Util
 import org.signal.core.util.logging.Log
@@ -283,7 +284,8 @@ class MessageNotification(threadRecipient: Recipient, record: MessageRecord) : N
   }
 
   override fun getThumbnailInfo(context: Context): ThumbnailInfo {
-    return if (SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !KeyCachingService.isLocked() && !ChatLock.isLocked(context, threadRecipient.id)) {
+    // BACKCHANNEL: blur media until tapped - no image preview for a blurred chat
+    return if (SignalStore.settings.messageNotificationsPrivacy.isDisplayMessage && !KeyCachingService.isLocked() && !ChatLock.isLocked(context, threadRecipient.id) && !MediaBlur.isEnabled(context, threadRecipient.id)) {
       if (thumbnailInfo.needsShrinking) {
         thumbnailInfo = NotificationThumbnails.get(context, this)
       }

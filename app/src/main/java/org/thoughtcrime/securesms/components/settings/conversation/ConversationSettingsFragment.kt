@@ -34,6 +34,7 @@ import io.reactivex.rxjava3.kotlin.subscribeBy
 import kotlinx.coroutines.launch
 import net.mikesimone.backchannel.ChatLock
 import net.mikesimone.backchannel.ContactOverrides
+import net.mikesimone.backchannel.MediaBlur
 import org.signal.core.ui.isSplitPane
 import org.signal.core.ui.permissions.Permissions
 import org.signal.core.ui.util.ThemeUtil
@@ -761,6 +762,21 @@ class ConversationSettingsFragment :
           icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_lock_24),
           isChecked = ChatLock.isLocked(requireContext(), state.recipient.id),
           onToggle = { lock -> onChatLockToggled(state, lock) }
+        )
+      }
+
+      // BACKCHANNEL: blur media until tapped, for this chat (overrides Settings > Chats)
+      if (!state.recipient.isReleaseNotes && !state.recipient.isSelf) {
+        switchPref(
+          title = DSLSettingsText.from(R.string.MediaBlur__blur_chat),
+          summary = DSLSettingsText.from(R.string.MediaBlur__blur_chat_summary),
+          icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_blur_24),
+          isChecked = MediaBlur.isEnabled(requireContext(), state.recipient.id),
+          onToggle = { blur ->
+            MediaBlur.setEnabled(requireContext(), state.recipient.id, blur)
+            true
+          },
+          onClick = { viewModel.state.value?.let { current -> settingsAdapter?.submitList(getConfiguration(current).toMappingModelList()) } }
         )
       }
 

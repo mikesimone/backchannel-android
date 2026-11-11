@@ -1513,6 +1513,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
       mediaThumbnailStub.require().setOnLongClickListener(passthroughClickListener);
       mediaThumbnailStub.require().setOnClickListener(passthroughClickListener);
       mediaThumbnailStub.require().showShade(messageRecord.isDisplayBodyEmpty(getContext()) && !hasExtraText(messageRecord) && !hasCondensedContent(messageRecord));
+      net.mikesimone.backchannel.MediaBlur.bind(getContext(), messageRecord, conversationRecipient.getId()); // BACKCHANNEL: blur media until tapped
       mediaThumbnailStub.require().setImageResource(requestManager,
                                                     thumbnailSlides,
                                                     showControls,
@@ -1550,7 +1551,8 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
           mediaItem = null;
         }
 
-        canPlayContent = (GiphyMp4PlaybackPolicy.autoplay() || allowedToPlayInline) && mediaItem != null;
+        canPlayContent = (GiphyMp4PlaybackPolicy.autoplay() || allowedToPlayInline) && mediaItem != null &&
+                         !net.mikesimone.backchannel.MediaBlur.shouldBlur(thumbnailSlides.get(0)); // BACKCHANNEL: no autoplay while blurred
       }
 
     } else if (isGiftMessage(messageRecord)) {
