@@ -133,7 +133,7 @@ class ContactSearchPagedDataSource(
     return when (section) {
       is ContactSearchConfiguration.Section.Individuals -> getNonGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, null)
       is ContactSearchConfiguration.Section.Groups -> contactSearchPagedDataSourceRepository.getGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, this::canSendToGroup)
-      is ContactSearchConfiguration.Section.Recents -> getRecentsSearchIterator(section, query).getCollectionSizeAndClose(section, query, notHiddenInBackchannel) // BACKCHANNEL
+      is ContactSearchConfiguration.Section.Recents -> getRecentsSearchIterator(section, query).getCollectionSizeAndClose(section, query, notHiddenInBackchannel()) // BACKCHANNEL
       is ContactSearchConfiguration.Section.Stories -> getStoriesSearchIterator(query).getCollectionSizeAndClose(section, query, null)
       is ContactSearchConfiguration.Section.Arbitrary -> arbitraryRepository?.getSize(section, query) ?: error("Invalid arbitrary section.")
       is ContactSearchConfiguration.Section.GroupMembers -> getGroupMembersSearchIterator(section, query).getCollectionSizeAndClose(section, query, filterByRole(section))
@@ -292,11 +292,13 @@ class ContactSearchPagedDataSource(
     }
   }
 
-  // BACKCHANNEL: recent chats in pickers leave out contacts hidden in Backchannel
-  // Reads nothing from the row when no one is hidden (and when the app isn't set up, as in unit tests).
-  private val notHiddenInBackchannel: (Cursor) -> Boolean = { cursor ->
-    val hidden = if (org.thoughtcrime.securesms.dependencies.AppDependencies.isInitialized) net.mikesimone.backchannel.HiddenContacts.hiddenIds(org.thoughtcrime.securesms.dependencies.AppDependencies.application) else emptySet()
-    hidden.isEmpty() || !hidden.contains(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID))
+  // BACKCHANNEL: recent chats in pickers leave out contacts hidden in Backchannel.
+  // No filter at all (Signal's own path) when no one is hidden, or when the app isn't set up, as in unit tests.
+  private fun notHiddenInBackchannel(): ((Cursor) -> Boolean)? {
+    if (!org.thoughtcrime.securesms.dependencies.AppDependencies.isInitialized) return null
+    val hidden = net.mikesimone.backchannel.HiddenContacts.hiddenIds(org.thoughtcrime.securesms.dependencies.AppDependencies.application)
+    if (hidden.isEmpty()) return null
+    return { cursor -> !hidden.contains(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID)) }
   }
 
   private fun getRecentsSearchIterator(section: ContactSearchConfiguration.Section.Recents, query: String?): ContactSearchIterator<Cursor> {
@@ -367,7 +369,7 @@ class ContactSearchPagedDataSource(
     return getRecentsSearchIterator(section, query).use { records ->
       readContactData(
         records = records,
-        recordsPredicate = notHiddenInBackchannel, // BACKCHANNEL: hidden contacts
+        recordsPredicate = notHiddenInBackchannel(), // BACKCHANNEL: hidden contacts
         section = section,
         startIndex = startIndex,
         endIndex = endIndex,
