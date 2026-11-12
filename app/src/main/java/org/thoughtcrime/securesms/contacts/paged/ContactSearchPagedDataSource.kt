@@ -293,10 +293,10 @@ class ContactSearchPagedDataSource(
   }
 
   // BACKCHANNEL: recent chats in pickers leave out contacts hidden in Backchannel.
-  // No filter at all (Signal's own path) when no one is hidden, or when the app isn't set up, as in unit tests.
+  // No filter at all (Signal's own path) when no one is hidden, or when there's no app instance, as in unit tests.
   private fun notHiddenInBackchannel(): ((Cursor) -> Boolean)? {
-    if (!org.thoughtcrime.securesms.dependencies.AppDependencies.isInitialized) return null
-    val hidden = net.mikesimone.backchannel.HiddenContacts.hiddenIds(org.thoughtcrime.securesms.dependencies.AppDependencies.application)
+    val app = im.molly.app.base.ApplicationInstance.getOrNull() ?: return null
+    val hidden = net.mikesimone.backchannel.HiddenContacts.hiddenIds(app)
     if (hidden.isEmpty()) return null
     return { cursor -> !hidden.contains(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID)) }
   }
