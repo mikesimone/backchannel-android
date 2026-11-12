@@ -7,6 +7,7 @@ import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
 import org.thoughtcrime.securesms.database.SignalDatabase
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
+import org.thoughtcrime.securesms.recipients.Recipient
 import org.thoughtcrime.securesms.recipients.RecipientId
 import org.thoughtcrime.securesms.util.MediaUtil
 import org.thoughtcrime.securesms.util.SaveAttachmentUtil
@@ -25,7 +26,8 @@ import org.thoughtcrime.securesms.util.SaveAttachmentUtil
  * your own sent media, view-once media, stories, stickers, GIFs, or anything
  * from a locked chat. Disappearing-message chats ARE saved (Mike 2026-11-11:
  * people turn the timer on to save phone space, not for secrecy; matches
- * Backchannel Web).
+ * Backchannel Web). Archived or muted groups are skipped unless that chat is
+ * set to Always (Mike 2026-11-11 20:38 PT; matches Backchannel Web).
  */
 object AutoSaveMedia {
 
@@ -121,6 +123,12 @@ object AutoSaveMedia {
     }
   }
 
+  /** An archived or muted group: its media isn't auto-saved unless the chat says Always. */
+  private fun isQuietGroup(recipientId: RecipientId): Boolean {
+    val recipient = Recipient.resolved(recipientId)
+    return recipient.isGroup && (recipient.isMuted || SignalDatabase.threads.isArchived(recipientId))
+  }
+
   private fun maybeSave(context: Context, messageId: Long, attachmentId: AttachmentId) {
     val attachment = SignalDatabase.attachments.getAttachment(attachmentId) ?: return
     val contentType = attachment.contentType ?: return
@@ -133,6 +141,7 @@ object AutoSaveMedia {
 
     val threadRecipientId = SignalDatabase.threads.getRecipientIdForThreadId(record.threadId) ?: return
     if (ChatLock.isLocked(context, threadRecipientId) || !isEnabled(context, threadRecipientId)) return
+    if (getChatSetting(context, threadRecipientId) != ChatSetting.ALWAYS && isQuietGroup(threadRecipientId)) return
 
     val date = if (record.dateSent > 0) record.dateSent else System.currentTimeMillis()
     val result = runBlocking {
