@@ -293,8 +293,10 @@ class ContactSearchPagedDataSource(
   }
 
   // BACKCHANNEL: recent chats in pickers leave out contacts hidden in Backchannel
+  // Reads nothing from the row when no one is hidden (and when the app isn't set up, as in unit tests).
   private val notHiddenInBackchannel: (Cursor) -> Boolean = { cursor ->
-    !net.mikesimone.backchannel.HiddenContacts.isHidden(org.thoughtcrime.securesms.dependencies.AppDependencies.application, org.thoughtcrime.securesms.recipients.RecipientId.from(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID)))
+    val hidden = if (org.thoughtcrime.securesms.dependencies.AppDependencies.isInitialized) net.mikesimone.backchannel.HiddenContacts.hiddenIds(org.thoughtcrime.securesms.dependencies.AppDependencies.application) else emptySet()
+    hidden.isEmpty() || !hidden.contains(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID))
   }
 
   private fun getRecentsSearchIterator(section: ContactSearchConfiguration.Section.Recents, query: String?): ContactSearchIterator<Cursor> {

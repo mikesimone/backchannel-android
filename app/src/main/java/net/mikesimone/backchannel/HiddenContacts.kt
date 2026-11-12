@@ -42,6 +42,10 @@ object HiddenContacts {
       ).also { cache = it }
   }
 
+  /** Everyone hidden, as recipient ids. */
+  @JvmStatic
+  fun hiddenIds(context: Context): Set<Long> = hidden(context)
+
   @JvmStatic
   fun isHidden(context: Context, recipientId: RecipientId): Boolean = hidden(context).contains(recipientId.toLong())
 
