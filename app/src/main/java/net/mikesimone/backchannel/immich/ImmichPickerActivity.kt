@@ -179,6 +179,8 @@ class ImmichPickerViewModel : ViewModel() {
   private var activeQuery: String? = null
 
   val albums = mutableStateListOf<ImmichClient.Album>()
+  var albumQuery by mutableStateOf("")
+  var albumSort by mutableStateOf(AlbumSort.RECENT)
   var openAlbum by mutableStateOf<ImmichClient.Album?>(null)
 
   val selected = mutableStateListOf<ImmichClient.Asset>()
@@ -189,6 +191,7 @@ class ImmichPickerViewModel : ViewModel() {
   fun start(context: Context) {
     if (::appContext.isInitialized) return
     appContext = context.applicationContext
+    albumSort = AlbumSort.load(appContext)
     connected = ImmichClient.isConnected(appContext)
     auth = ImmichClient.auth(appContext)
     savedServer = ImmichClient.server(appContext).orEmpty()
@@ -408,6 +411,18 @@ class ImmichPickerViewModel : ViewModel() {
         busy = false
       }
     }
+  }
+
+  /** Albums matching the search box, in the chosen order. */
+  fun visibleAlbums(): List<ImmichClient.Album> {
+    val q = albumQuery.trim()
+    val matching = if (q.isEmpty()) albums.toList() else albums.filter { it.name.contains(q, ignoreCase = true) }
+    return albumSort.sort(matching)
+  }
+
+  fun chooseAlbumSort(sort: AlbumSort) {
+    albumSort = sort
+    AlbumSort.save(appContext, sort)
   }
 
   private fun loadAlbums() {
@@ -747,6 +762,14 @@ private fun AlbumGrid(viewModel: ImmichPickerViewModel) {
     }
     return
   }
+  AlbumToolbar(viewModel)
+  val shown = viewModel.visibleAlbums()
+  if (shown.isEmpty()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+      Text(stringResource(R.string.Immich__no_matching_albums))
+    }
+    return
+  }
   LazyVerticalGrid(
     columns = GridCells.Adaptive(150.dp),
     contentPadding = PaddingValues(12.dp),
@@ -754,7 +777,7 @@ private fun AlbumGrid(viewModel: ImmichPickerViewModel) {
     verticalArrangement = Arrangement.spacedBy(12.dp),
     modifier = Modifier.fillMaxSize()
   ) {
-    itemsIndexed(viewModel.albums, key = { _, a -> a.id }) { _, album ->
+    itemsIndexed(shown, key = { _, a -> a.id }) { _, album ->
       Column(modifier = Modifier.clickable { viewModel.open(album) }) {
         Box(
           modifier = Modifier
@@ -769,6 +792,76 @@ private fun AlbumGrid(viewModel: ImmichPickerViewModel) {
         }
         Text("${album.count}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
+    }
+  }
+}
+
+/** Search box and sort menu above the albums (Backchannel, Mike 2026-11-11). */
+@Composable
+private fun AlbumToolbar(viewModel: ImmichPickerViewModel) {
+  var sortMenu by remember { mutableStateOf(false) }
+  Row(
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 0.dp)
+  ) {
+    OutlinedTextField(
+      value = viewModel.albumQuery,
+      onValueChange = { viewModel.albumQuery = it },
+      placeholder = { Text(stringResource(R.string.Immich__search_albums)) },
+      leadingIcon = { Icon(painter = SignalIcons.Search.painter, contentDescription = null) },
+      trailingIcon = {
+        if (viewModel.albumQuery.isNotEmpty()) {
+          IconButton(onClick = { viewModel.albumQuery = "" }) { Icon(painter = SignalIcons.X.painter, contentDescription = null) }
+        }
+      },
+      singleLine = true,
+      keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+      modifier = Modifier.weight(1f)
+    )
+    Box {
+      TextButton(onClick = { sortMenu = true }) { Text(stringResource(viewModel.albumSort.label)) }
+      DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+        AlbumSort.entries.forEach { sort ->
+          DropdownMenuItem(
+            text = { Text(stringResource(sort.label)) },
+            onClick = {
+              sortMenu = false
+              viewModel.chooseAlbumSort(sort)
+            }
+          )
+        }
+      }
+    }
+  }
+}
+
+/** How the album list is ordered; remembered on this phone. */
+enum class AlbumSort(val label: Int) {
+  RECENT(R.string.Immich__sort_recent),
+  NAME(R.string.Immich__sort_name),
+  NEWEST_PHOTOS(R.string.Immich__sort_newest_photos),
+  MOST_PHOTOS(R.string.Immich__sort_most_photos);
+
+  fun sort(list: List<ImmichClient.Album>): List<ImmichClient.Album> = when (this) {
+    RECENT -> list.sortedByDescending { it.lastAdded }
+    NAME -> list.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+    NEWEST_PHOTOS -> list.sortedByDescending { it.newestPhoto }
+    MOST_PHOTOS -> list.sortedByDescending { it.count }
+  }
+
+  companion object {
+    private const val PREFS = "backchannel_immich_albums"
+    private const val KEY = "sort"
+
+    fun load(context: Context): AlbumSort {
+      val name = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+      return entries.firstOrNull { it.name == name } ?: RECENT
+    }
+
+    fun save(context: Context, sort: AlbumSort) {
+      context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, sort.name).apply()
     }
   }
 }

@@ -32,7 +32,7 @@ Writing
 • Typed :) ;) :( turn into emoji, and one default emoji skin tone.
 
 Photos
-• Attach from your own Immich server (its own login or single sign-on; uses your home address when you're home), or share from Immich.
+• Attach from your own Immich server (its own login or single sign-on; uses your home address when you're home; search and sort albums), or share from Immich.
 • Attach through Google Photos or any photo app that lets you pick.
 • The photo viewer stays inside the message you opened.
 • Blur received photos and videos until you tap them, in every chat or just the ones you pick.

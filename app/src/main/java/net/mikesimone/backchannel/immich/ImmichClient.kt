@@ -56,7 +56,8 @@ object ImmichClient {
 
   data class Asset(val id: String, val isVideo: Boolean, val mimeType: String, val duration: String?)
 
-  data class Album(val id: String, val name: String, val count: Int, val thumbnailId: String?)
+  /** [lastAdded] is when a photo was last added (or the album last changed); [newestPhoto] is the date of its newest photo. ISO 8601 UTC, or "". */
+  data class Album(val id: String, val name: String, val count: Int, val thumbnailId: String?, val lastAdded: String = "", val newestPhoto: String = "")
 
   data class Page(val assets: List<Asset>, val nextPage: Int?)
 
@@ -343,13 +344,22 @@ object ImmichClient {
     return Page(list, next)
   }
 
+  private fun iso(o: JSONObject, key: String): String = if (o.isNull(key)) "" else o.optString(key)
+
   @WorkerThread
   fun albums(context: Context): List<Album> {
     // GET /albums lists owned and shared-with-me albums together.
     val arr = JSONArray(get(context, "albums"))
     val all = (0 until arr.length()).map { i ->
       val a = arr.getJSONObject(i)
-      Album(a.getString("id"), a.optString("albumName"), a.optInt("assetCount"), a.optString("albumThumbnailAssetId").takeIf { it.isNotBlank() && it != "null" })
+      Album(
+        a.getString("id"),
+        a.optString("albumName"),
+        a.optInt("assetCount"),
+        a.optString("albumThumbnailAssetId").takeIf { it.isNotBlank() && it != "null" },
+        lastAdded = iso(a, "lastModifiedAssetTimestamp").ifEmpty { iso(a, "updatedAt") },
+        newestPhoto = iso(a, "endDate")
+      )
     }
     return all.filter { it.count > 0 }
   }
