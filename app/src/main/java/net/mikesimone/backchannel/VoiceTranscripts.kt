@@ -28,8 +28,8 @@ import java.util.concurrent.ConcurrentHashMap
  * is kept and shown as text under its voice message, so it is never worked out
  * twice. Tap the text to expand or collapse a long one.
  *
- * Optional: Settings > Chats > "Transcribe voice messages automatically" (off by
- * default) transcribes incoming voice messages in the background once they have
+ * Settings > Chats > "Transcribe voice messages automatically" (ON by default:
+ * Mike 2026-11-11 chose "auto, under each note"; fixed 2026-11-13) transcribes incoming voice messages in the background once they have
  * downloaded, one at a time, with the same on-device recognizer as [VoiceTranscriber].
  * If the phone has no on-device recognizer it skips them; audio never leaves the
  * phone and no network recognizer is ever used. Android 13 and up.
@@ -71,11 +71,13 @@ object VoiceTranscripts {
   private val pending = LinkedHashMap<Long, Pair<Long, Uri>>()
   private val attempted = HashSet<Long>()
   private var running: Any? = null
+  // The first automatic run in a session may ask Android to download the offline speech model.
+  private var modelRequested = false
 
   /** The Settings > Chats switch. */
   @JvmStatic
   fun isAutoEnabled(context: Context): Boolean {
-    return auto ?: context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, false).also { auto = it }
+    return auto ?: context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, true).also { auto = it }
   }
 
   @JvmStatic
@@ -251,8 +253,11 @@ object VoiceTranscripts {
       object : VoiceTranscriber.Listener {
         override fun onDone(text: String, error: String?, complete: Boolean) {
           main.removeCallbacks(timeout)
-          if (complete) {
+          if (complete && text.isNotEmpty()) {
             save(context, attachmentId, messageId, text)
+          } else if (complete) {
+            // Nothing recognized: don't store an empty result, so it's tried again next time the app starts.
+            Log.i(TAG, "[$attachmentId] No words recognized")
           } else {
             Log.i(TAG, "[$attachmentId] Not transcribed: ${error ?: "unknown"}")
           }
@@ -263,8 +268,9 @@ object VoiceTranscripts {
           }
         }
       },
-      askForModel = false
+      askForModel = !modelRequested
     )
+    modelRequested = true
     running = recognition
     main.postDelayed(timeout, TIMEOUT_MS)
     try {

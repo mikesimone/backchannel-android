@@ -1,1 +1,1 @@
-New: search and sort your Immich albums. New: saving received photos and videos to the gallery now skips archived or muted groups, unless that group is set to Always.
+New: search and sort your Immich albums. New: saving received photos and videos to the gallery now skips archived or muted groups, unless that group is set to Always. Fixed: voice messages are transcribed automatically again (now on by default).
