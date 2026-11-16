@@ -33,7 +33,9 @@ android {
   externalNativeBuild {
     cmake {
       path = file("src/main/cpp/CMakeLists.txt")
-      version = libs.versions.cmake.get()
+      // The SDK's CMake on Six and developer machines; the reproducible-build Docker image (Alpine)
+      // uses Alpine's CMake from PATH and sets backchannel.cmakeVersion to its version.
+      version = providers.gradleProperty("backchannel.cmakeVersion").getOrElse(libs.versions.cmake.get())
     }
   }
 }

@@ -37,9 +37,10 @@ RUN sdkmanager "ndk;$NDK_VERSION"
 
 ENV ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
 
-# BACKCHANNEL: CMake for lib/whisper (must match the cmake version in gradle/libs.versions.toml)
-ARG CMAKE_VERSION="3.31.6"
-RUN sdkmanager "cmake;$CMAKE_VERSION"
+# BACKCHANNEL: CMake + ninja for lib/whisper. The SDK's CMake is linked against glibc and doesn't
+# run on Alpine (gcompat lacks fcntl64), so use Alpine's; its version goes to Gradle below.
+RUN apk add --no-cache cmake ninja-build
+ENV PATH="$PATH:/usr/lib/ninja-build/bin"
 
 ARG BUILD_TOOLS_VERSION="36.0.0"
 RUN sdkmanager "build-tools;${BUILD_TOOLS_VERSION}"
@@ -57,6 +58,8 @@ ENV GRADLE_RO_DEP_CACHE=/.gradle-ro-cache
 
 # Override project's gradle.properties
 COPY gradle.properties.docker /root/.gradle/gradle.properties
+# BACKCHANNEL: tell lib/whisper which CMake (on PATH) to use
+RUN echo "backchannel.cmakeVersion=$(cmake --version | head -1 | awk '{print $3}')" >> /root/.gradle/gradle.properties
 
 # Copy project and purge generated files
 COPY . /molly/

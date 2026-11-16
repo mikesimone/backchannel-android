@@ -20,7 +20,10 @@ then build and run the transcription probe (`TranscribeProbeActivity`, debug bui
 ## Build
 
 - NDK: `libs.versions.ndk` (same as the app and the reproducible-build Dockerfile).
-- CMake: `libs.versions.cmake` (3.31.6; the Dockerfile installs the same version).
+- CMake: `libs.versions.cmake` (3.31.6, from the SDK) locally. The reproducible-build Docker image is
+  Alpine, where the SDK's glibc CMake doesn't run, so it uses Alpine's CMake and ninja and sets
+  `backchannel.cmakeVersion` to that version (4.1.3 as of 2026-11-16). Two Docker builds produce
+  byte-identical libraries.
 - ggml loads its CPU backend at run time from the app's native library directory. On arm64 it
   builds one backend per SoC generation (`GGML_CPU_ALL_VARIANTS`: armv8.0 up to armv9.2) and
   picks the best one the phone supports; x86_64 gets an SSE4.2 baseline, armeabi-v7a NEON-vfpv4.
