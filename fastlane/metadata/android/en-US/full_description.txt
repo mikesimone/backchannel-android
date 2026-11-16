@@ -10,7 +10,7 @@ Conversations
 • Reply to one photo of a multi-photo message, with your own photos, videos, GIFs (or search for one), files or a sticker.
 • Forward to as many chats as you like, with your own message on top and real @mentions in groups.
 • Send one poll to many chats at once.
-• Sticker replies, and double-tap a message to react.
+• Sticker replies, favorite stickers, and double-tap a message to react.
 • Starred messages.
 • Remind me: long-press a message and pick when to be reminded about it.
 • Note to Self works as a reminder: a new note stays unread until you open it.
