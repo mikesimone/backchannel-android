@@ -1,36 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<!-- BACKCHANNEL: long-press preview fills the window (Mike 2026-11-16); was a 200dp square -->
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     tools:viewBindingIgnore="true"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/signal_transparent_60">
+    android:background="@color/signal_transparent_60"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp">
 
-    <LinearLayout
+    <org.thoughtcrime.securesms.components.emoji.EmojiTextView
+        android:id="@+id/sticker_popup_emoji"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:orientation="vertical"
-        android:gravity="center">
+        android:padding="8dp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textSize="22sp"
+        tools:text=":)"/>
 
-        <org.thoughtcrime.securesms.components.emoji.EmojiTextView
-            android:id="@+id/sticker_popup_emoji"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:gravity="center"
-            android:maxLines="1"
-            android:textSize="22sp"
-            tools:text=":)"/>
+    <ImageView
+        android:id="@+id/sticker_popup_image"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scaleType="fitCenter"
+        tools:src="@tools:sample/avatars"/>
 
-        <ImageView
-            android:id="@+id/sticker_popup_image"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:layout_gravity="center"
-            tools:src="@tools:sample/avatars"/>
-
-    </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>
