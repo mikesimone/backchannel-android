@@ -383,6 +383,7 @@ dependencies {
   coreLibraryDesugaring(libs.android.tools.desugar)
 
   implementation(project(":lib:archive"))
+  implementation(project(":lib:whisper")) // BACKCHANNEL
   implementation(project(":lib:libsignal-service"))
   implementation(project(":lib:network"))
   implementation(project(":lib:paging"))

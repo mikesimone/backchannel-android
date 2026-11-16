@@ -124,6 +124,7 @@ include(":lib:debuglogs-viewer")
 include(":lib:blurhash")
 include(":lib:apng")
 include(":lib:archive")
+include(":lib:whisper") // BACKCHANNEL: offline speech recognition
 
 // Feature modules
 include(":feature:registration")

@@ -37,6 +37,10 @@ RUN sdkmanager "ndk;$NDK_VERSION"
 
 ENV ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
 
+# BACKCHANNEL: CMake for lib/whisper (must match the cmake version in gradle/libs.versions.toml)
+ARG CMAKE_VERSION="3.31.6"
+RUN sdkmanager "cmake;$CMAKE_VERSION"
+
 ARG BUILD_TOOLS_VERSION="36.0.0"
 RUN sdkmanager "build-tools;${BUILD_TOOLS_VERSION}"
 
