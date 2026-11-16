@@ -1,0 +1,92 @@
+# BACKCHANNEL: mirrors Molly's im.molly artifacts (libsignal, ringrtc) into
+# this repo's GitHub Packages Maven registry, byte for byte.
+#
+# Molly publishes them on Cloudsmith, which has answered 402 Payment Required
+# for everything since 2026-11. The build now resolves im.molly from
+# https://maven.pkg.github.com/mikesimone/backchannel-android (settings.gradle.kts).
+#
+# To add a new version (when a Molly merge bumps libsignal/ringrtc):
+#   1. Get the exact files (.pom, .module, .aar/.jar) from a machine whose
+#      ~/.gradle/caches/modules-2/files-2.1/im.molly/ has them, or from Molly's
+#      GitHub releases / Cloudsmith if it comes back. Their SHA-256 must match
+#      gradle/verification-metadata.xml.
+#   2. Upload them to a temporary release:
+#        gh release create deps-upload-tmp --prerelease --notes tmp <files...>
+#   3. gh workflow run mirror-molly-deps.yml
+#   4. gh release delete deps-upload-tmp --cleanup-tag --yes
+# Asset names must be the Maven file names: <artifactId>-<version>[-<classifier>].<ext>.
+# The artifactId/version are worked out from the matching .pom in the release.
+name: Mirror Molly deps
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Temporary release that holds the files"
+        default: deps-upload-tmp
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  mirror:
+    name: Mirror to GitHub Packages
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REGISTRY: https://maven.pkg.github.com/${{ github.repository }}
+    steps:
+      - name: Download release assets
+        run: |
+          mkdir files && cd files
+          gh release download "${{ inputs.release_tag }}" -R "$GITHUB_REPOSITORY"
+          ls -l
+          if [ -f SHA256SUMS ]; then sha256sum -c SHA256SUMS; fi
+
+      - name: Upload to Maven layout
+        working-directory: files
+        run: |
+          set -euo pipefail
+          put() { # file path
+            local code
+            code=$(curl -sS -o /tmp/resp -w '%{http_code}' -X PUT \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              --upload-file "$1" "$REGISTRY/$2")
+            echo "$code $2"
+            case "$code" in
+              2*) ;;
+              409) echo "  already there (packages are immutable); leaving it" ;;
+              *) cat /tmp/resp; exit 1 ;;
+            esac
+          }
+          for pom in *.pom; do
+            group=$(python3 -c 'import sys,xml.etree.ElementTree as E;r=E.parse(sys.argv[1]).getroot();n={"m":"http://maven.apache.org/POM/4.0.0"};print((r.find("m:groupId",n) if r.find("m:groupId",n) is not None else r.find("m:parent/m:groupId",n)).text)' "$pom")
+            artifact=$(python3 -c 'import sys,xml.etree.ElementTree as E;r=E.parse(sys.argv[1]).getroot();print(r.find("{http://maven.apache.org/POM/4.0.0}artifactId").text)' "$pom")
+            version=$(python3 -c 'import sys,xml.etree.ElementTree as E;r=E.parse(sys.argv[1]).getroot();n={"m":"http://maven.apache.org/POM/4.0.0"};print((r.find("m:version",n) if r.find("m:version",n) is not None else r.find("m:parent/m:version",n)).text)' "$pom")
+            dir="${group//.//}/$artifact/$version"
+            echo "== $group:$artifact:$version"
+            # Artifacts first, then Gradle metadata, then the POM (as Maven deploy does).
+            for f in "$artifact-$version".* "$artifact-$version"-*.*; do
+              [ -f "$f" ] || continue
+              case "$f" in *.pom|*.module) continue ;; esac
+              put "$f" "$dir/$f"
+            done
+            [ -f "$artifact-$version.module" ] && put "$artifact-$version.module" "$dir/$artifact-$version.module"
+            put "$pom" "$dir/$pom"
+          done
+
+      - name: Verify byte-identical
+        working-directory: files
+        run: |
+          set -euo pipefail
+          for pom in *.pom; do
+            artifact=$(python3 -c 'import sys,xml.etree.ElementTree as E;r=E.parse(sys.argv[1]).getroot();print(r.find("{http://maven.apache.org/POM/4.0.0}artifactId").text)' "$pom")
+            version=${pom#"$artifact-"}; version=${version%.pom}
+            for f in "$artifact-$version".* "$artifact-$version"-*.*; do
+              [ -f "$f" ] || continue
+              want=$(sha256sum "$f" | cut -d' ' -f1)
+              got=$(curl -sSfL -H "Authorization: Bearer $GH_TOKEN" "$REGISTRY/im/molly/$artifact/$version/$f" | sha256sum | cut -d' ' -f1)
+              [ "$want" = "$got" ] && echo "OK  $f" || { echo "MISMATCH $f"; exit 1; }
+            done
+          done
