@@ -1,1 +1,1 @@
-Fixed: transcribing a voice message always said no words were recognized; the voice note now reaches the phone's offline speech recognizer, and missing language packs get a clear message and a download prompt. Automatic transcription is off by default again.
+Fixed: voice message transcription now works on every phone, including Samsung. Backchannel brings its own offline speech engine; its 60 MB speech model downloads only when you turn transcription on, and audio never leaves your phone. Delete the model anytime in Settings > Chats.
