@@ -13,6 +13,7 @@ import java.util.function.Consumer
 
 private const val RECENT_LIMIT = 24
 private const val RECENT_PACK_ID = "RECENT"
+private const val FAVORITE_PACK_ID = "BACKCHANNEL_FAVORITES" // BACKCHANNEL
 
 class StickerKeyboardRepository(private val stickerTable: StickerTable) {
   fun getStickerPacks(consumer: Consumer<List<KeyboardStickerPack>>) {
@@ -45,8 +46,29 @@ class StickerKeyboardRepository(private val stickerTable: StickerTable) {
       if (recentStickerPack.stickers.isNotEmpty()) {
         fullPacks.add(0, recentStickerPack)
       }
+      // BACKCHANNEL: Favorites tab first (FavoriteStickers)
+      val favoriteStickerPack: KeyboardStickerPack = getFavoriteStickerPack()
+      if (favoriteStickerPack.stickers.isNotEmpty()) {
+        fullPacks.add(0, favoriteStickerPack)
+      }
       consumer.accept(fullPacks)
     }
+  }
+
+  // BACKCHANNEL: favorite stickers that are still installed, newest first
+  private fun getFavoriteStickerPack(): KeyboardStickerPack {
+    val context = org.thoughtcrime.securesms.dependencies.AppDependencies.application
+    val stickers = net.mikesimone.backchannel.FavoriteStickers.list(context).mapNotNull { (packId, stickerId) ->
+      stickerTable.getSticker(packId, stickerId, false)
+    }
+    return KeyboardStickerPack(
+      packId = FAVORITE_PACK_ID,
+      title = null,
+      titleResource = R.string.FavoriteStickers__title,
+      coverUri = null,
+      coverResource = R.drawable.symbol_star_24,
+      stickers = stickers
+    )
   }
 
   private fun getRecentStickerPack(): KeyboardStickerPack {

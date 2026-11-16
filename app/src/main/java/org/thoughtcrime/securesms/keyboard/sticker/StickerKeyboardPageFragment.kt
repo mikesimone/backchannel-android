@@ -181,7 +181,8 @@ open class StickerKeyboardPageFragment :
   }
 
   override fun onStickerLongClicked(sticker: KeyboardStickerListAdapter.Sticker) {
-    listTouchListener.enterHoverMode(stickerList, sticker)
+    // BACKCHANNEL: full-window preview with Send, favorite and Close (was hold-to-preview)
+    net.mikesimone.backchannel.StickerPreviewDialog.show(requireContext(), Glide.with(this), sticker.stickerRecord) { onStickerClicked(sticker) }
   }
 
   override fun getStickerDataFromView(view: View): Pair<Any, String>? {
