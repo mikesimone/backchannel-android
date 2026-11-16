@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -285,20 +286,34 @@ private fun ChatsSettingsScreen(
       }
 
       // BACKCHANNEL: transcribe incoming voice messages on this phone and show the text under them
-      if (Build.VERSION.SDK_INT >= 33) {
-        item {
-          val context = LocalContext.current
-          var autoTranscribe by remember { mutableStateOf(net.mikesimone.backchannel.VoiceTranscripts.isAutoEnabled(context)) }
-          Rows.ToggleRow(
-            text = stringResource(R.string.VoiceTranscripts__auto),
-            label = stringResource(R.string.VoiceTranscripts__auto_summary),
-            checked = autoTranscribe,
-            onCheckChanged = {
-              net.mikesimone.backchannel.VoiceTranscripts.setAutoEnabled(context, it)
-              autoTranscribe = it
-            }
-          )
+      item {
+        val context = LocalContext.current
+        var autoTranscribe by remember { mutableStateOf(net.mikesimone.backchannel.VoiceTranscripts.isAutoEnabled(context)) }
+        Rows.ToggleRow(
+          text = stringResource(R.string.VoiceTranscripts__auto),
+          label = stringResource(R.string.VoiceTranscripts__auto_summary),
+          checked = autoTranscribe,
+          onCheckChanged = {
+            net.mikesimone.backchannel.VoiceTranscripts.setAutoEnabled(context, it)
+            autoTranscribe = it
+          }
+        )
+      }
+
+      // BACKCHANNEL: Backchannel's own speech model: its status, and delete it to free the space
+      item {
+        val context = LocalContext.current
+        var modelStatus by remember { mutableStateOf(net.mikesimone.backchannel.SpeechModel.status(context)) }
+        DisposableEffect(Unit) {
+          val listener = { modelStatus = net.mikesimone.backchannel.SpeechModel.status(context) }
+          net.mikesimone.backchannel.SpeechModel.addChangeListener(listener)
+          onDispose { net.mikesimone.backchannel.SpeechModel.removeChangeListener(listener) }
         }
+        Rows.TextRow(
+          text = stringResource(R.string.SpeechModel__settings_title),
+          label = modelStatus,
+          onClick = { net.mikesimone.backchannel.SpeechModel.manage(context) }
+        )
       }
 
       item {

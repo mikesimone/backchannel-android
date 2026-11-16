@@ -2,13 +2,11 @@ package net.mikesimone.backchannel
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
 import android.view.View
 import android.widget.TextView
-import androidx.annotation.RequiresApi
 import org.signal.core.models.database.AttachmentId
 import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
@@ -30,9 +28,10 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * Settings > Chats > "Transcribe voice messages automatically" (OFF by default since
  * 2026-11-16, so nothing is downloaded for people who never use it; it was on by default in bc16) transcribes incoming voice messages in the background once they have
- * downloaded, one at a time, with the same on-device recognizer as [VoiceTranscriber].
- * If the phone has no on-device recognizer it skips them; audio never leaves the
- * phone and no network recognizer is ever used. Android 13 and up.
+ * downloaded, one at a time, with Backchannel's own speech model ([SpeechModel], whisper.cpp,
+ * since 2026-11-16). Turning the switch on offers to download the model; the queue itself never
+ * downloads anything and never uses Android's recognizer, and skips voice messages while the model
+ * isn't there. Audio never leaves the phone.
  *
  * Storage: a small table in Signal's encrypted database, keyed by attachment id.
  * A trigger removes a transcript when its attachment is deleted (message deleted
@@ -50,8 +49,8 @@ object VoiceTranscripts {
   private const val MESSAGE_ID = "message_id"
   private const val TEXT = "text"
 
-  /** Longest one recognition may take before the queue gives up on it and moves on. */
-  private const val TIMEOUT_MS = 5 * 60 * 1000L
+  /** Longest one recognition may take before the queue gives up on it and moves on (whisper on a slow phone, a long voice message). */
+  private const val TIMEOUT_MS = 15 * 60 * 1000L
   private const val COLLAPSED_LINES = 3
 
   /** Marks "looked up, no transcript" in [cache]. */
@@ -80,11 +79,12 @@ object VoiceTranscripts {
     return auto ?: context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, false).also { auto = it }
   }
 
+  /** Turning it on offers to download the speech model ([context] must be an Activity for that dialog). */
   @JvmStatic
   fun setAutoEnabled(context: Context, enabled: Boolean) {
     context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO, enabled).apply()
     auto = enabled
-    if (enabled) VoiceTranscriber.requestModelIfMissing(context.applicationContext)
+    if (enabled) SpeechModel.ensure(context, onReady = {}, onDeclined = {})
   }
 
   // region Storage
@@ -205,7 +205,7 @@ object VoiceTranscripts {
   /** Called when an attachment finishes downloading. Queues it if it's an incoming voice message and the switch is on; never throws. */
   @JvmStatic
   fun onDownloaded(context: Context, messageId: Long, attachmentId: AttachmentId) {
-    if (Build.VERSION.SDK_INT < 33 || !isAutoEnabled(context)) return
+    if (!isAutoEnabled(context) || !SpeechModel.isInstalled(context)) return
     SignalExecutors.BOUNDED.execute {
       try {
         val attachment = SignalDatabase.attachments.getAttachment(attachmentId) ?: return@execute
@@ -218,7 +218,7 @@ object VoiceTranscripts {
   }
 
   private fun maybeQueue(context: Context, record: MessageRecord, attachment: DatabaseAttachment) {
-    if (Build.VERSION.SDK_INT < 33 || !isAutoEnabled(context)) return
+    if (!isAutoEnabled(context) || !SpeechModel.isInstalled(context)) return
     if (record.isOutgoing || !attachment.voiceNote || attachment.transferState != AttachmentTable.TRANSFER_PROGRESS_DONE) return
     if ((record as? MmsMessageRecord)?.storyType?.isStory == true) return
     val uri = attachment.uri ?: return
@@ -231,14 +231,13 @@ object VoiceTranscripts {
   }
 
   private fun next(context: Context) {
-    if (Build.VERSION.SDK_INT < 33 || running != null) return
+    if (running != null) return
     val entry = pending.entries.firstOrNull() ?: return
     pending.remove(entry.key)
     attempted.add(entry.key)
     run(context, AttachmentId(entry.key), entry.value.first, entry.value.second)
   }
 
-  @RequiresApi(33)
   private fun run(context: Context, attachmentId: AttachmentId, messageId: Long, uri: Uri) {
     var recognition: VoiceTranscriber.Recognition? = null
     val timeout = Runnable {
@@ -269,8 +268,9 @@ object VoiceTranscripts {
           }
         }
       },
-      // Never pop Android's model download prompt from the background; turning the switch on asks for it.
-      askForModel = false
+      // Never pop a download prompt from the background, and only ever Backchannel's own engine.
+      askForModel = false,
+      platformFallback = false
     )
     running = recognition
     main.postDelayed(timeout, TIMEOUT_MS)

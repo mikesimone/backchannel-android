@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognitionSupport
 import android.speech.RecognitionSupportCallback
@@ -32,20 +33,30 @@ import org.thoughtcrime.securesms.attachments.DatabaseAttachment
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
 import org.thoughtcrime.securesms.media.DecryptableUriMediaInput
+import net.mikesimone.backchannel.whisper.WhisperEngine
+import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
- * Transcribe a voice message (Backchannel, Mike 2026-11-06). Uses only
- * Android's on-device speech recognizer: the audio is decoded on the phone and
- * fed to the offline recognizer, never to a network service. If the phone has
- * no offline recognizer, or no offline model for the language, it says so and
- * asks the system to download the model; it never falls back to a cloud
- * service. Needs Android 13 (file audio input for the recognizer).
+ * Transcribe a voice message (Backchannel, Mike 2026-11-06). The audio is decoded
+ * on the phone and never sent to a network service.
+ *
+ * Since 2026-11-16 Backchannel has its own offline speech engine (whisper.cpp,
+ * [WhisperEngine], multilingual, language detected automatically) so it works the
+ * same on every phone: Samsung phones route Android's on-device recognizer to
+ * Samsung's engine or to none, which doesn't reliably take recorded audio. Its model
+ * ([SpeechModel], about 57 MB) is downloaded the first time someone taps Transcribe
+ * or turns on automatic transcription. Until then, tapping Transcribe and declining
+ * the download falls back to Android's on-device recognizer (Android 13 and up):
+ * if the phone has no offline recognizer, or no offline model for the language, it
+ * says so and asks the system to download the model; it never uses a cloud service.
  *
  * Transcripts are kept and shown under the voice message ([VoiceTranscripts],
  * Backchannel, Mike 2026-11-11), which can also transcribe incoming ones on its own.
@@ -56,18 +67,27 @@ object VoiceTranscriber {
   private const val TARGET_RATE = 16000
   private const val SUPPORT_TIMEOUT_MS = 5_000L
 
-  @JvmStatic
-  fun canTranscribe(record: MessageRecord): Boolean {
-    return Build.VERSION.SDK_INT >= 33 && record is MmsMessageRecord && record.slideDeck.audioSlide?.uri != null
-  }
+  /** Whisper runs one recognition at a time (each one loads the model, ~150 MB of memory while it runs). */
+  private val whisperExecutor: ExecutorService = Executors.newSingleThreadExecutor { Thread(it, "backchannel-whisper") }
 
   @JvmStatic
+  fun canTranscribe(record: MessageRecord): Boolean {
+    return record is MmsMessageRecord && record.slideDeck.audioSlide?.uri != null
+  }
+
+  /**
+   * Long-press > Transcribe. Uses Backchannel's speech model, offering to download it first;
+   * if the person says not now, Android's own on-device recognizer is tried instead (Android 13+).
+   */
+  @JvmStatic
   fun show(context: Context, record: MessageRecord) {
-    if (Build.VERSION.SDK_INT < 33) return
     val slide = (record as? MmsMessageRecord)?.slideDeck?.audioSlide ?: return
     val uri = slide.uri ?: return
     val attachmentId = (slide.asAttachment() as? DatabaseAttachment)?.attachmentId
-    Session(context, uri) { text -> if (attachmentId != null) VoiceTranscripts.save(context, attachmentId, record.id, text) }.start()
+    val start = {
+      Session(context, uri) { text -> if (attachmentId != null) VoiceTranscripts.save(context, attachmentId, record.id, text) }.start()
+    }
+    SpeechModel.ensure(context, onReady = start, onDeclined = { if (Build.VERSION.SDK_INT >= 33) start() })
   }
 
   /** What a [Recognition] reports back, on the main thread. */
@@ -85,14 +105,16 @@ object VoiceTranscriber {
 
   /**
    * One on-device recognition run over a voice message file. Start and use it on the main
-   * thread. Never uses a network recognizer: [start] fails if the phone has no on-device one.
+   * thread. Uses Backchannel's speech model when it is downloaded; otherwise, if
+   * [platformFallback], Android's on-device recognizer (Android 13+; [askForModel] lets it
+   * ask Android to download its model). Never uses a network recognizer.
    */
-  @RequiresApi(33)
-  class Recognition(
+  class Recognition @JvmOverloads constructor(
     private val context: Context,
     private val audio: Uri,
     private val listener: Listener,
-    private val askForModel: Boolean
+    private val askForModel: Boolean,
+    private val platformFallback: Boolean = true
   ) : RecognitionListener {
 
     private val finalText = StringBuilder()
@@ -104,6 +126,10 @@ object VoiceTranscriber {
 
     /** Set by the decoder thread before it closes the pipe, so the recognizer's "nothing heard" can't hide a decode failure. */
     @Volatile private var decodeFailed = false
+
+    @Volatile private var whisper: WhisperEngine? = null
+
+    @Volatile private var cancelled = false
 
     private val language = Locale.getDefault().toLanguageTag()
 
@@ -120,6 +146,89 @@ object VoiceTranscriber {
     }
 
     fun start() {
+      when {
+        SpeechModel.isInstalled(context) -> startWhisper()
+        platformFallback && Build.VERSION.SDK_INT >= 33 -> startPlatform()
+        else -> {
+          note("Speech model: not downloaded")
+          finish(context.getString(R.string.Transcribe__no_model), complete = false)
+        }
+      }
+    }
+
+    /** Backchannel's own engine: decode the whole voice message, then run whisper over it. */
+    private fun startWhisper() {
+      note("Engine: Backchannel speech model (whisper.cpp, base, multilingual)")
+      whisperExecutor.execute {
+        if (cancelled) return@execute
+        val started = SystemClock.elapsedRealtime()
+        val samples = try {
+          val pcm = ByteArrayOutputStream().also { decodeToPcm(context, audio, it) }.toByteArray()
+          if (pcm.isEmpty()) throw IOException("No audio decoded")
+          FloatArray(pcm.size / 2) { i -> ((pcm[2 * i].toInt() and 0xff) or (pcm[2 * i + 1].toInt() shl 8)).toShort() / 32768f }
+        } catch (e: Exception) {
+          Log.w(TAG, "Couldn't decode the voice message", e)
+          decodeFailed = true
+          main.post {
+            note("Couldn't decode the audio: ${e.javaClass.simpleName}")
+            finish(context.getString(R.string.Transcribe__failed), complete = false)
+          }
+          return@execute
+        }
+        val seconds = samples.size / WhisperEngine.SAMPLE_RATE
+        main.post { note("Decoded $seconds s of audio") }
+
+        val engine = try {
+          WhisperEngine.open(context, SpeechModel.file(context))
+        } catch (t: Throwable) {
+          Log.w(TAG, "Couldn't load the speech engine", t)
+          null
+        }
+        if (engine == null) {
+          main.post {
+            note("Couldn't load the speech model")
+            finish(context.getString(R.string.Transcribe__failed), complete = false)
+          }
+          return@execute
+        }
+        whisper = engine
+        try {
+          if (cancelled) return@execute
+          Log.i(TAG, "whisper.cpp: ${WhisperEngine.systemInfo()}")
+          val loaded = SystemClock.elapsedRealtime()
+          val segments = StringBuilder()
+          val result = engine.transcribe(samples) { segment ->
+            segments.append(segment)
+            val soFar = segments.toString().trim()
+            main.post { if (!done) listener.onProgress(soFar) }
+          }
+          val now = SystemClock.elapsedRealtime()
+          Log.i(TAG, "Whisper: $seconds s of audio, model loaded in ${loaded - started} ms (with decoding), recognized in ${now - loaded} ms, language ${result?.language}")
+          main.post {
+            note("Took ${(now - started) / 100 / 10.0} s; language ${result?.language ?: "?"}")
+            if (result == null) {
+              finish(context.getString(R.string.Transcribe__failed), complete = false)
+            } else {
+              finalText.setLength(0)
+              finalText.append(result.text)
+              finish(null, complete = true)
+            }
+          }
+        } catch (t: Throwable) {
+          Log.w(TAG, "Whisper failed", t)
+          main.post {
+            note("Speech engine failed: ${t.javaClass.simpleName}")
+            finish(context.getString(R.string.Transcribe__failed), complete = false)
+          }
+        } finally {
+          whisper = null
+          engine.close()
+        }
+      }
+    }
+
+    @RequiresApi(33)
+    private fun startPlatform() {
       val available = SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
       note("Offline recognizer: ${if (available) "yes" else "no"}; language $language")
       if (!available) {
@@ -165,6 +274,7 @@ object VoiceTranscriber {
       }
     }
 
+    @RequiresApi(33)
     private fun onSupport(support: RecognitionSupport?) {
       if (support != null) {
         val installed = support.installedOnDeviceLanguages.any { matches(it) }
@@ -197,12 +307,14 @@ object VoiceTranscriber {
       return tag.equals(language, ignoreCase = true) || Locale.forLanguageTag(tag).language == Locale.getDefault().language
     }
 
+    @RequiresApi(33)
     private fun recognitionIntent(): Intent {
       return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
         .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         .putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
     }
 
+    @RequiresApi(33)
     private fun listen() {
 
       val pipe = try {
@@ -252,6 +364,8 @@ object VoiceTranscriber {
     /** Stops without reporting anything further. */
     fun cancel() {
       done = true
+      cancelled = true
+      whisper?.cancel()
       stop()
     }
 
@@ -313,7 +427,7 @@ object VoiceTranscriber {
       when (error) {
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
         SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> {
-          if (askForModel) downloadModel(context)
+          if (askForModel && Build.VERSION.SDK_INT >= 33) downloadModel(context)
           finish(context.getString(R.string.Transcribe__downloading, Locale.getDefault().displayLanguage), complete = false)
         }
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> finish(context.getString(R.string.Transcribe__no_permission), complete = false)
@@ -330,44 +444,6 @@ object VoiceTranscriber {
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
   }
 
-  /**
-   * Called when someone turns on automatic transcription: if the phone's offline recognizer can
-   * download the model for this phone's language but doesn't have it, ask Android to (it shows its
-   * own confirmation with the size). Nothing is downloaded unless transcription is turned on or used.
-   */
-  @JvmStatic
-  fun requestModelIfMissing(context: Context) {
-    if (Build.VERSION.SDK_INT < 33 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return
-    val main = Handler(Looper.getMainLooper())
-    main.post {
-      val language = Locale.getDefault().toLanguageTag()
-      val base = Locale.getDefault().language
-      fun serves(tag: String) = tag.equals(language, ignoreCase = true) || Locale.forLanguageTag(tag).language == base
-      try {
-        val checker = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-        checker.checkRecognitionSupport(
-          Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE, language),
-          { main.post(it) },
-          object : RecognitionSupportCallback {
-            override fun onSupportResult(support: RecognitionSupport) {
-              checker.destroy()
-              val missing = support.installedOnDeviceLanguages.none(::serves) && support.pendingOnDeviceLanguages.none(::serves)
-              Log.i(TAG, "Offline model for $language on enable: installed=${support.installedOnDeviceLanguages} missing=$missing")
-              if (missing && support.supportedOnDeviceLanguages.any(::serves)) downloadModel(context)
-            }
-
-            override fun onError(error: Int) {
-              checker.destroy()
-              Log.w(TAG, "checkRecognitionSupport failed on enable: $error")
-            }
-          }
-        )
-      } catch (e: Exception) {
-        Log.w(TAG, "Couldn't check the offline model", e)
-      }
-    }
-  }
-
   @RequiresApi(33)
   private fun downloadModel(context: Context) {
     try {
@@ -382,7 +458,6 @@ object VoiceTranscriber {
   }
 
   /** The long-press > Transcribe dialog. A finished transcript also goes to [onTranscript] (stored under the bubble). */
-  @RequiresApi(33)
   private class Session(private val context: Context, audio: Uri, private val onTranscript: (String) -> Unit) : Listener {
 
     private var finalText = ""
@@ -446,7 +521,6 @@ object VoiceTranscriber {
    * the fly. Opening it with MediaExtractor.setDataSource(context, uri) failed on every voice message,
    * so the recognizer got no audio and said "no match" (Backchannel, 2026-11-16).
    */
-  @RequiresApi(33)
   @JvmStatic
   fun decodeToPcm(context: Context, uri: Uri, out: OutputStream): Long {
     DecryptableUriMediaInput.createForUri(context, uri).use { input ->

@@ -2,7 +2,6 @@ package net.mikesimone.backchannel
 
 import android.app.Activity
 import android.media.MediaExtractor
-import android.os.Build
 import android.os.Bundle
 import org.signal.core.util.concurrent.SignalExecutors
 import org.signal.core.util.logging.Log
@@ -21,7 +20,11 @@ import org.thoughtcrime.securesms.dependencies.AppDependencies
  *
  *   adb shell pm grant <package> android.permission.RECORD_AUDIO
  *   adb shell am start -n <package>/net.mikesimone.backchannel.TranscribeProbeActivity --es asset voice-44k.aac
- *   adb logcat -s TranscribeProbeActivity VoiceTranscriber
+ *   adb logcat -s TranscribeProbeActivity VoiceTranscriber SpeechModel BackchannelWhisper
+ *
+ * With Backchannel's speech model in place (files/speech/ggml-base-q5_1.bin) this runs whisper,
+ * otherwise Android's recognizer. --ez fetch true first downloads the model through
+ * [SpeechModel.download] (mobile data allowed), the same code as the download dialog.
  *
  * Bundled notes (app/src/debug/assets/backchannel-transcribe): espeak-ng reading "The quick brown
  * fox jumps over the lazy dog. Please call me back this afternoon.", as ADTS AAC at 44.1 kHz (what
@@ -31,11 +34,6 @@ class TranscribeProbeActivity : Activity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    if (Build.VERSION.SDK_INT < 33) {
-      Log.w(TAG, "RESULT needs Android 13")
-      finish()
-      return
-    }
     val asset = intent.getStringExtra("asset") ?: "voice-44k.aac"
     val contentType = if (asset.endsWith(".m4a")) "audio/mp4" else "audio/aac"
 
@@ -56,6 +54,15 @@ class TranscribeProbeActivity : Activity() {
           Thread.sleep(200)
           waited += 200
         }
+      }
+      if (intent.getBooleanExtra("dialog", false)) {
+        // The download dialog on its own (--ez dialog true), as Transcribe and Settings show it.
+        AppDependencies.networkManager.setNetworkEnabled(true)
+        runOnUiThread {
+          val themed = android.view.ContextThemeWrapper(this, org.thoughtcrime.securesms.R.style.Theme_Signal_DayNight_NoActionBar)
+          SpeechModel.ensure(themed, onReady = { Log.i(TAG, "RESULT dialog ready") }, onDeclined = { Log.i(TAG, "RESULT dialog declined") })
+        }
+        return@execute
       }
       val bytes = assets.open("backchannel-transcribe/$asset").use { it.readBytes() }
       val blob = AppDependencies.blobs.forData(bytes).createForSingleSessionInMemory()
@@ -79,6 +86,30 @@ class TranscribeProbeActivity : Activity() {
       val uri = SignalDatabase.attachments.insertAttachmentForPreUpload(attachment).uri!!
       Log.i(TAG, "Stored $asset (${bytes.size} bytes) as $uri")
 
+      if (intent.getBooleanExtra("fetch", false) && !SpeechModel.isInstalled(this)) {
+        // A registered install has its network on; this one never went through onboarding.
+        AppDependencies.networkManager.setNetworkEnabled(true)
+        val finished = java.util.concurrent.CountDownLatch(1)
+        val started = android.os.SystemClock.elapsedRealtime()
+        var last = -1L
+        runOnUiThread {
+          SpeechModel.download(this, allowMobileData = true).addListener { state ->
+            when (state) {
+              is SpeechModel.State.Running -> if (state.done * 10 / state.total != last) {
+                last = state.done * 10 / state.total
+                Log.i(TAG, "Download: ${state.done} of ${state.total}")
+              }
+              else -> {
+                Log.i(TAG, "Download ended: $state after ${android.os.SystemClock.elapsedRealtime() - started} ms; installed=${SpeechModel.isInstalled(this)}")
+                finished.countDown()
+              }
+            }
+          }
+        }
+        finished.await()
+      }
+      Log.i(TAG, "Speech model installed: ${SpeechModel.isInstalled(this)}")
+
       // What bc16 and earlier did with that URI.
       try {
         MediaExtractor().apply { setDataSource(this@TranscribeProbeActivity, uri, null) }.release()
@@ -88,6 +119,7 @@ class TranscribeProbeActivity : Activity() {
       }
 
       runOnUiThread {
+        startedAt = android.os.SystemClock.elapsedRealtime()
         VoiceTranscriber.Recognition(
           this,
           uri,
@@ -97,7 +129,7 @@ class TranscribeProbeActivity : Activity() {
             }
 
             override fun onDone(text: String, error: String?, complete: Boolean) {
-              Log.i(TAG, "RESULT asset=$asset complete=$complete error=$error text='$text'")
+              Log.i(TAG, "RESULT asset=$asset complete=$complete error=$error ms=${android.os.SystemClock.elapsedRealtime() - startedAt} text='$text'")
               finish()
             }
           },
@@ -108,6 +140,7 @@ class TranscribeProbeActivity : Activity() {
   }
 
   private var recognition: VoiceTranscriber.Recognition? = null
+  private var startedAt = 0L
 
   override fun onDestroy() {
     recognition?.diagnostics?.let { Log.i(TAG, "Diagnostics:\n$it") }
