@@ -12,12 +12,16 @@ on:
 
 permissions:
   contents: write # BACKCHANNEL: create and publish releases with GITHUB_TOKEN
+  packages: read # BACKCHANNEL: im.molly mirror in GitHub Packages
 
 env:
   TAG_REF: "${{ inputs.version || github.ref_name }}"
   BUILD_ENV_FILE: ${{ vars.BUILD_ENV_FILE || 'beta-stable.env' }}
   HAVE_KEYSTORE: ${{ secrets.SECRET_KEYSTORE != '' }}
   HAVE_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }} # BACKCHANNEL
+  # BACKCHANNEL: Gradle reads im.molly (libsignal, ringrtc) from this repo's
+  # GitHub Packages mirror with it (settings.gradle.kts); needs packages: read.
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build:

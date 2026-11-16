@@ -12,8 +12,12 @@ on:
 
 permissions:
   contents: read # to fetch code (actions/checkout)
+  packages: read # BACKCHANNEL: im.molly mirror in GitHub Packages
 
 env:
+  # BACKCHANNEL: Gradle reads im.molly (libsignal, ringrtc) from this repo's
+  # GitHub Packages mirror with it (settings.gradle.kts); needs packages: read.
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   TAG_REF: "${{ github.event.inputs.version || github.event.release.tag_name }}"
   BUILD_ENV_FILE: ${{ vars.BUILD_ENV_FILE || 'beta-stable.env' }}
 

@@ -71,6 +71,7 @@ jobs:
     if: needs.sync.outputs.tag != ''
     permissions:
       contents: write
+      packages: read # im.molly mirror in GitHub Packages
     uses: ./.github/workflows/release.yml
     with:
       version: ${{ needs.sync.outputs.tag }}

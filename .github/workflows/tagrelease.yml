@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: write # BACKCHANNEL: push the tag and let the called Release workflow publish
+  packages: read # BACKCHANNEL: the called Release workflow reads the im.molly mirror
 
 jobs:
   push_tag:

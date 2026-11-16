@@ -104,6 +104,29 @@ Backchannel 2 is the same build with `-PbackchannelTwo=true` (on CI,
 `CI_BACKCHANNEL_TWO=true`), e.g. `./gradlew -PbackchannelTwo=true :app:assembleProdStoreDebug`;
 the Release workflow builds and attaches it to each GitHub release.
 
+**libsignal and ringrtc come from this repo's GitHub Packages.** Molly
+publishes `im.molly:libsignal-client`, `libsignal-android` and
+`ringrtc-android` on Cloudsmith, which has answered `402 Payment Required`
+since November 2026, so the exact files are mirrored (byte-identical, the
+SHA-256s in `gradle/verification-metadata.xml` still apply) into
+`https://maven.pkg.github.com/mikesimone/backchannel-android`. GitHub Packages
+needs a token even for public packages: CI uses its `GITHUB_TOKEN`
+(`packages: read`); for a local build put `gpr.user=<github user>` and
+`gpr.key=<PAT with read:packages>` in `~/.gradle/gradle.properties`, or set
+`GITHUB_ACTOR`/`GITHUB_TOKEN`. Without a token (F-Droid, offline), the mirror
+is skipped and those three modules must be in Maven local
+(`~/.m2/repository/im/molly/...`, or `-Dmaven.repo.local=<dir>`); the Gradle
+cache alone is not enough, because Gradle keys it by repository.
+
+**When a Molly merge bumps libsignal or ringrtc**, the build fails until the
+new version is mirrored: the Sync Molly release will break on it while
+Cloudsmith is 402. Get the new `.pom`, `.module` and `.aar`/`.jar` (Molly's
+GitHub releases, a machine whose Gradle cache has them, or a libsignal/ringrtc
+build from source), check them against `verification-metadata.xml`, upload
+them to a temporary release `deps-upload-tmp`, run the **Mirror Molly deps**
+workflow, then delete the release (`gh release delete deps-upload-tmp
+--cleanup-tag --yes`). Details in `.github/workflows/mirror-molly-deps.yml`.
+
 ## Privacy
 
 Backchannel collects nothing. There are no ads or analytics, and debug

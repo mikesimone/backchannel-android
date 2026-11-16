@@ -23,17 +23,31 @@ dependencyResolutionManagement {
         includeGroup("org.signal")
       }
     }
-    maven {
-      url = uri("https://dl.cloudsmith.io/public/mollyim/ringrtc/maven/")
-      content {
-        includeModule("im.molly", "ringrtc-android")
-      }
-    }
-    maven {
-      url = uri("https://dl.cloudsmith.io/public/mollyim/libsignal/maven/")
-      content {
-        includeModule("im.molly", "libsignal-client")
-        includeModule("im.molly", "libsignal-android")
+    // BACKCHANNEL: Molly publishes libsignal and ringrtc on Cloudsmith
+    // (dl.cloudsmith.io/public/mollyim/{libsignal,ringrtc}/maven/), which
+    // answers 402 Payment Required since 2026-11. Gradle does not fall through
+    // to the next repository on a 402, so Cloudsmith is not listed at all: the
+    // exact files are mirrored into this repo's GitHub Packages registry
+    // (.github/workflows/mirror-molly-deps.yml says how to add a new version).
+    // GitHub Packages needs a token even for public packages: set
+    // GITHUB_ACTOR/GITHUB_TOKEN (CI does), or gpr.user/gpr.key in
+    // ~/.gradle/gradle.properties (a PAT with read:packages). Without one the
+    // repository is skipped and these modules must come from mavenLocal above.
+    val gprUser = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
+    val gprKey = providers.gradleProperty("gpr.key").orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull
+    if (!gprUser.isNullOrEmpty() && !gprKey.isNullOrEmpty()) {
+      maven {
+        name = "backchannelMolly"
+        url = uri("https://maven.pkg.github.com/mikesimone/backchannel-android")
+        credentials {
+          username = gprUser
+          password = gprKey
+        }
+        content {
+          includeModule("im.molly", "ringrtc-android")
+          includeModule("im.molly", "libsignal-client")
+          includeModule("im.molly", "libsignal-android")
+        }
       }
     }
     maven {
