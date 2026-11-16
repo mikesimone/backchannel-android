@@ -28,8 +28,8 @@ import java.util.concurrent.ConcurrentHashMap
  * is kept and shown as text under its voice message, so it is never worked out
  * twice. Tap the text to expand or collapse a long one.
  *
- * Settings > Chats > "Transcribe voice messages automatically" (ON by default:
- * Mike 2026-11-11 chose "auto, under each note"; fixed 2026-11-13) transcribes incoming voice messages in the background once they have
+ * Settings > Chats > "Transcribe voice messages automatically" (OFF by default since
+ * 2026-11-16, so nothing is downloaded for people who never use it; it was on by default in bc16) transcribes incoming voice messages in the background once they have
  * downloaded, one at a time, with the same on-device recognizer as [VoiceTranscriber].
  * If the phone has no on-device recognizer it skips them; audio never leaves the
  * phone and no network recognizer is ever used. Android 13 and up.
@@ -71,19 +71,20 @@ object VoiceTranscripts {
   private val pending = LinkedHashMap<Long, Pair<Long, Uri>>()
   private val attempted = HashSet<Long>()
   private var running: Any? = null
-  // The first automatic run in a session may ask Android to download the offline speech model.
-  private var modelRequested = false
-
-  /** The Settings > Chats switch. */
+  /**
+   * The Settings > Chats switch. Off by default (2026-11-16, Mike: the speech model is downloaded only
+   * once someone turns transcription on or taps Transcribe, never for people who don't use it).
+   */
   @JvmStatic
   fun isAutoEnabled(context: Context): Boolean {
-    return auto ?: context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, true).also { auto = it }
+    return auto ?: context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, false).also { auto = it }
   }
 
   @JvmStatic
   fun setAutoEnabled(context: Context, enabled: Boolean) {
     context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO, enabled).apply()
     auto = enabled
+    if (enabled) VoiceTranscriber.requestModelIfMissing(context.applicationContext)
   }
 
   // region Storage
@@ -268,9 +269,9 @@ object VoiceTranscripts {
           }
         }
       },
-      askForModel = !modelRequested
+      // Never pop Android's model download prompt from the background; turning the switch on asks for it.
+      askForModel = false
     )
-    modelRequested = true
     running = recognition
     main.postDelayed(timeout, TIMEOUT_MS)
     try {

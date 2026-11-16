@@ -10,8 +10,12 @@ import android.media.MediaFormat
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.speech.RecognitionListener
+import android.speech.RecognitionSupport
+import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.widget.ScrollView
@@ -27,6 +31,7 @@ import org.thoughtcrime.securesms.R
 import org.thoughtcrime.securesms.attachments.DatabaseAttachment
 import org.thoughtcrime.securesms.database.model.MessageRecord
 import org.thoughtcrime.securesms.database.model.MmsMessageRecord
+import org.thoughtcrime.securesms.media.DecryptableUriMediaInput
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
@@ -49,6 +54,7 @@ object VoiceTranscriber {
 
   private val TAG = Log.tag(VoiceTranscriber::class.java)
   private const val TARGET_RATE = 16000
+  private const val SUPPORT_TIMEOUT_MS = 5_000L
 
   @JvmStatic
   fun canTranscribe(record: MessageRecord): Boolean {
@@ -94,12 +100,110 @@ object VoiceTranscriber {
     private var done = false
     private var recognizer: SpeechRecognizer? = null
     private var readSide: ParcelFileDescriptor? = null
+    private val main = Handler(Looper.getMainLooper())
+
+    /** Set by the decoder thread before it closes the pipe, so the recognizer's "nothing heard" can't hide a decode failure. */
+    @Volatile private var decodeFailed = false
+
+    private val language = Locale.getDefault().toLanguageTag()
+
+    /**
+     * What this run found out about the phone's offline recognizer, for the dialog and the log:
+     * whether there is one, which languages it has installed / can download, and how it ended.
+     */
+    var diagnostics: String = ""
+      private set
+
+    private fun note(line: String) {
+      Log.i(TAG, "Diagnostics: $line")
+      diagnostics = if (diagnostics.isEmpty()) line else "$diagnostics\n$line"
+    }
 
     fun start() {
-      if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
+      val available = SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+      note("Offline recognizer: ${if (available) "yes" else "no"}; language $language")
+      if (!available) {
         finish(context.getString(R.string.Transcribe__no_offline), complete = false)
         return
       }
+
+      // Check the offline model first: without it the recognizer reports "no match", which
+      // looked like "No words were recognized" (Backchannel, 2026-11-16). The same recognizer is
+      // then used to listen: destroying a separate checker right before listening disconnected
+      // the recognition service about half the time (error 11, seen on the emulator).
+      val checker = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+      recognizer = checker
+      var answered = false
+      val proceed = { support: RecognitionSupport? ->
+        if (!answered) {
+          answered = true
+          if (!done) onSupport(support)
+        }
+      }
+      try {
+        checker.checkRecognitionSupport(
+          recognitionIntent(),
+          { main.post(it) },
+          object : RecognitionSupportCallback {
+            override fun onSupportResult(recognitionSupport: RecognitionSupport) = proceed(recognitionSupport)
+            override fun onError(error: Int) {
+              Log.w(TAG, "checkRecognitionSupport failed: $error")
+              note("Language check failed: error $error")
+              proceed(null)
+            }
+          }
+        )
+        // Some recognizers never answer; don't wait on them forever.
+        main.postDelayed({
+          if (!answered) note("Language check: no answer")
+          proceed(null)
+        }, SUPPORT_TIMEOUT_MS)
+      } catch (e: Exception) {
+        Log.w(TAG, "checkRecognitionSupport threw", e)
+        note("Language check failed: ${e.javaClass.simpleName}")
+        proceed(null)
+      }
+    }
+
+    private fun onSupport(support: RecognitionSupport?) {
+      if (support != null) {
+        val installed = support.installedOnDeviceLanguages.any { matches(it) }
+        val pending = support.pendingOnDeviceLanguages.any { matches(it) }
+        val supported = support.supportedOnDeviceLanguages.any { matches(it) }
+        note("Installed: ${support.installedOnDeviceLanguages.ifEmpty { listOf("none") }.joinToString()}")
+        if (support.pendingOnDeviceLanguages.isNotEmpty()) note("Downloading: ${support.pendingOnDeviceLanguages.joinToString()}")
+        note("Downloadable: ${support.supportedOnDeviceLanguages.size} languages, ${if (supported) "including" else "not including"} $language")
+        if (!installed) {
+          val name = Locale.getDefault().displayLanguage
+          when {
+            pending -> finish(context.getString(R.string.Transcribe__pending, name), complete = false)
+            supported -> {
+              if (askForModel) {
+                note("Asked Android to download the $language model")
+                downloadModel(context)
+              }
+              finish(context.getString(R.string.Transcribe__downloading, name), complete = false)
+            }
+            else -> finish(context.getString(R.string.Transcribe__unsupported_language, name), complete = false)
+          }
+          return
+        }
+      }
+      listen()
+    }
+
+    /** The model for [tag] serves this phone's language (en-US for en-US, or plain "en"). */
+    private fun matches(tag: String): Boolean {
+      return tag.equals(language, ignoreCase = true) || Locale.forLanguageTag(tag).language == Locale.getDefault().language
+    }
+
+    private fun recognitionIntent(): Intent {
+      return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+    }
+
+    private fun listen() {
 
       val pipe = try {
         ParcelFileDescriptor.createPipe()
@@ -111,9 +215,7 @@ object VoiceTranscriber {
       readSide = pipe[0]
       val writeSide = pipe[1]
 
-      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+      val intent = recognitionIntent().apply {
         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, pipe[0])
@@ -123,16 +225,21 @@ object VoiceTranscriber {
         putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
       }
 
-      recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context).also {
-        it.setRecognitionListener(this)
-        it.startListening(intent)
+      (recognizer ?: SpeechRecognizer.createOnDeviceSpeechRecognizer(context).also { recognizer = it }).apply {
+        setRecognitionListener(this@Recognition)
+        startListening(intent)
       }
 
       SignalExecutors.UNBOUNDED.execute {
         try {
-          FileOutputStream(writeSide.fileDescriptor).use { decodeToPcm(context, audio, it) }
+          val bytes = FileOutputStream(writeSide.fileDescriptor).use { decodeToPcm(context, audio, it) }
+          main.post { note("Decoded ${bytes / 2 / TARGET_RATE} s of audio") }
+          if (bytes == 0L) throw IOException("No audio decoded")
         } catch (e: Exception) {
           Log.w(TAG, "Couldn't decode the voice message", e)
+          decodeFailed = true
+          main.post { note("Couldn't decode the audio: ${e.javaClass.simpleName}") }
+          main.post { finish(context.getString(R.string.Transcribe__failed), complete = false) }
         } finally {
           try {
             writeSide.close()
@@ -161,7 +268,12 @@ object VoiceTranscriber {
       if (done) return
       done = true
       stop()
-      listener.onDone(finalText.toString().trim(), error, complete)
+      val text = finalText.toString().trim()
+      if (decodeFailed && text.isEmpty()) {
+        listener.onDone(text, context.getString(R.string.Transcribe__failed), complete = false)
+      } else {
+        listener.onDone(text, error, complete)
+      }
     }
 
     private fun append(results: Bundle?) {
@@ -197,6 +309,7 @@ object VoiceTranscriber {
     override fun onError(error: Int) {
       Log.w(TAG, "Recognizer error $error")
       if (done) return
+      note("Recognizer error $error")
       when (error) {
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
         SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> {
@@ -215,6 +328,44 @@ object VoiceTranscriber {
     override fun onBufferReceived(buffer: ByteArray?) = Unit
     override fun onEndOfSpeech() = Unit
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
+  }
+
+  /**
+   * Called when someone turns on automatic transcription: if the phone's offline recognizer can
+   * download the model for this phone's language but doesn't have it, ask Android to (it shows its
+   * own confirmation with the size). Nothing is downloaded unless transcription is turned on or used.
+   */
+  @JvmStatic
+  fun requestModelIfMissing(context: Context) {
+    if (Build.VERSION.SDK_INT < 33 || !SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) return
+    val main = Handler(Looper.getMainLooper())
+    main.post {
+      val language = Locale.getDefault().toLanguageTag()
+      val base = Locale.getDefault().language
+      fun serves(tag: String) = tag.equals(language, ignoreCase = true) || Locale.forLanguageTag(tag).language == base
+      try {
+        val checker = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+        checker.checkRecognitionSupport(
+          Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE, language),
+          { main.post(it) },
+          object : RecognitionSupportCallback {
+            override fun onSupportResult(support: RecognitionSupport) {
+              checker.destroy()
+              val missing = support.installedOnDeviceLanguages.none(::serves) && support.pendingOnDeviceLanguages.none(::serves)
+              Log.i(TAG, "Offline model for $language on enable: installed=${support.installedOnDeviceLanguages} missing=$missing")
+              if (missing && support.supportedOnDeviceLanguages.any(::serves)) downloadModel(context)
+            }
+
+            override fun onError(error: Int) {
+              checker.destroy()
+              Log.w(TAG, "checkRecognitionSupport failed on enable: $error")
+            }
+          }
+        )
+      } catch (e: Exception) {
+        Log.w(TAG, "Couldn't check the offline model", e)
+      }
+    }
   }
 
   @RequiresApi(33)
@@ -276,18 +427,39 @@ object VoiceTranscriber {
       finalText = text
       textView.text = when {
         text.isNotEmpty() -> text
-        error != null -> error
-        else -> context.getString(R.string.Transcribe__nothing)
+        else -> {
+          // Say what the phone's recognizer reported, so a failure on one phone can be told apart from another.
+          val message = error ?: context.getString(R.string.Transcribe__nothing)
+          if (recognition.diagnostics.isEmpty()) message else "$message\n\n${context.getString(R.string.Transcribe__diagnostics)}\n${recognition.diagnostics}"
+        }
       }
       dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = text.isNotEmpty()
       if (complete) onTranscript(text)
     }
   }
 
-  /** Decodes [uri] and writes 16 kHz mono 16-bit little-endian PCM to [out]. */
-  private fun decodeToPcm(context: Context, uri: Uri, out: OutputStream) {
-    val extractor = MediaExtractor()
-    extractor.setDataSource(context, uri, null)
+  /**
+   * Decodes [uri] and writes 16 kHz mono 16-bit little-endian PCM to [out]; returns the bytes written.
+   *
+   * [uri] is a Signal attachment URI (content://<app>/part/N, or a blob), which no content provider
+   * serves: it has to be opened through [DecryptableUriMediaInput], which decrypts the attachment on
+   * the fly. Opening it with MediaExtractor.setDataSource(context, uri) failed on every voice message,
+   * so the recognizer got no audio and said "no match" (Backchannel, 2026-11-16).
+   */
+  @RequiresApi(33)
+  @JvmStatic
+  fun decodeToPcm(context: Context, uri: Uri, out: OutputStream): Long {
+    DecryptableUriMediaInput.createForUri(context, uri).use { input ->
+      val extractor = input.createExtractor()
+      try {
+        return decode(extractor, out)
+      } finally {
+        extractor.release()
+      }
+    }
+  }
+
+  private fun decode(extractor: MediaExtractor, out: OutputStream): Long {
     val track = (0 until extractor.trackCount).firstOrNull { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
       ?: throw IOException("No audio track")
     extractor.selectTrack(track)
@@ -301,7 +473,8 @@ object VoiceTranscriber {
     val info = MediaCodec.BufferInfo()
     var inputDone = false
     var outputDone = false
-    var position = 0.0 // resampler position, in input frames
+    val resampler = Resampler(TARGET_RATE)
+    var written = 0L
 
     try {
       while (!outputDone) {
@@ -332,29 +505,16 @@ object VoiceTranscriber {
             buffer.position(info.offset)
             buffer.limit(info.offset + info.size)
             val shorts = buffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
-            val frames = shorts.remaining() / channels
-            val mono = ShortArray(frames) { f ->
-              var sum = 0
-              for (c in 0 until channels) sum += shorts.get(f * channels + c)
-              (sum / channels).toShort()
-            }
+            val mono = downmix(ShortArray(shorts.remaining()).also { shorts.get(it) }, channels)
             codec.releaseOutputBuffer(outIndex, false)
 
-            // Linear resample to TARGET_RATE.
-            val step = rate.toDouble() / TARGET_RATE
-            val outSamples = ArrayList<Short>()
-            while (position < frames - 1) {
-              val i = position.toInt()
-              val frac = position - i
-              outSamples += (mono[i] * (1 - frac) + mono[i + 1] * frac).toInt().toShort()
-              position += step
+            val pcm = resampler.process(mono, rate)
+            if (pcm.isNotEmpty()) {
+              val bytes = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+              bytes.asShortBuffer().put(pcm)
+              out.write(bytes.array())
+              written += bytes.capacity()
             }
-            position -= frames
-            if (position < 0) position = 0.0
-
-            val bytes = ByteBuffer.allocate(outSamples.size * 2).order(ByteOrder.LITTLE_ENDIAN)
-            outSamples.forEach { bytes.putShort(it) }
-            out.write(bytes.array())
 
             if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
               outputDone = true
@@ -366,7 +526,47 @@ object VoiceTranscriber {
     } finally {
       codec.stop()
       codec.release()
-      extractor.release()
+    }
+    return written
+  }
+
+  /** Averages interleaved [channels] into one. */
+  @JvmStatic
+  fun downmix(interleaved: ShortArray, channels: Int): ShortArray {
+    if (channels <= 1) return interleaved
+    return ShortArray(interleaved.size / channels) { f ->
+      var sum = 0
+      for (c in 0 until channels) sum += interleaved[f * channels + c]
+      (sum / channels).toShort()
+    }
+  }
+
+  /** Streaming linear resampler to [targetRate]; keeps the last input sample so buffer boundaries join up. */
+  class Resampler(private val targetRate: Int) {
+    private var position = 0.0 // next output position, in input frames, relative to the current buffer (-1 = the carried sample)
+    private var last: Short? = null
+
+    fun process(input: ShortArray, rate: Int): ShortArray {
+      if (input.isEmpty()) return ShortArray(0)
+      if (rate == targetRate) return input
+      val step = rate.toDouble() / targetRate
+      val prev = last
+      // Sample at index i, where -1 is the sample carried over from the previous buffer.
+      fun at(i: Int): Int = if (i < 0) (prev ?: input[0]).toInt() else input[i].toInt()
+      if (prev == null && position < 0) position = 0.0
+      val out = ShortArray(maxOf(0, ((input.size - 1 - position) / step).toInt() + 1))
+      var n = 0
+      while (position <= input.size - 1 && n < out.size) {
+        val i = kotlin.math.floor(position).toInt()
+        val frac = position - i
+        val a = at(i)
+        val b = if (i + 1 <= input.size - 1) at(i + 1) else a
+        out[n++] = (a + (b - a) * frac).toInt().toShort()
+        position += step
+      }
+      position -= input.size
+      last = input[input.size - 1]
+      return if (n == out.size) out else out.copyOf(n)
     }
   }
 }
