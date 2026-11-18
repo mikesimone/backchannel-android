@@ -4335,6 +4335,34 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     return deleteMessagesInThread(listOf(threadId), extraWhere, protectStarred = true)
   }
 
+  /** Backchannel: true if any of the messages is starred. */
+  fun anyStarred(messageIds: Collection<Long>): Boolean {
+    if (messageIds.isEmpty()) return false
+    return SqlUtil.buildCollectionQuery(ID, messageIds, prefix = "$STARRED > 0 AND ").any { query ->
+      readableDatabase
+        .select(ID)
+        .from(TABLE_NAME)
+        .where(query.where, query.whereArgs)
+        .limit(1)
+        .run()
+        .use { it.moveToFirst() }
+    }
+  }
+
+  /** Backchannel: true if any of the chats holds a starred message. */
+  fun hasStarredInThreads(threadIds: Collection<Long>): Boolean {
+    if (threadIds.isEmpty()) return false
+    return SqlUtil.buildCollectionQuery(THREAD_ID, threadIds, prefix = "$STARRED > 0 AND ").any { query ->
+      readableDatabase
+        .select(ID)
+        .from("$TABLE_NAME INDEXED BY $INDEX_STARRED")
+        .where(query.where, query.whereArgs)
+        .limit(1)
+        .run()
+        .use { it.moveToFirst() }
+    }
+  }
+
   /** Backchannel: true if the message is starred. Disappearing-message expiry skips starred messages. */
   fun isStarred(messageId: Long): Boolean {
     return readableDatabase

@@ -689,6 +689,10 @@ class MediaPreviewV2Fragment :
     }
 
     val messageRecord = SignalDatabase.messages.getMessageRecord(attachment.mmsId)
+    if (messageRecord.isStarred) {
+      net.mikesimone.backchannel.StarredGuard.showUnstarFirst(requireContext(), chat = false)
+      return
+    }
     val isNoteToSelf = messageRecord.isOutgoing && messageRecord.toRecipient.isSelf
 
     MaterialAlertDialogBuilder(requireContext()).apply {

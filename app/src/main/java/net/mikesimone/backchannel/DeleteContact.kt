@@ -47,6 +47,11 @@ object DeleteContact {
   @JvmStatic
   fun confirm(context: Context, recipient: Recipient, onDeleted: () -> Unit) {
     if (!canDelete(recipient)) return
+    val existingThread = SignalDatabase.threads.getThreadIdIfExistsFor(recipient.id)
+    if (existingThread > 0 && StarredGuard.threadsHaveStarred(listOf(existingThread))) {
+      StarredGuard.showUnstarFirst(context, chat = true)
+      return
+    }
     val name = recipient.getDisplayName(context)
     MaterialAlertDialogBuilder(context)
       .setTitle(context.getString(R.string.DeleteContact__confirm_title, name))

@@ -22,6 +22,10 @@ internal object MediaActions {
 
   @JvmStatic
   fun handleDeleteMedia(fragment: Fragment, mediaRecords: Collection<MediaTable.MediaRecord>) {
+    if (net.mikesimone.backchannel.StarredGuard.messagesStarred(mediaRecords.map { it.messageId })) {
+      net.mikesimone.backchannel.StarredGuard.showUnstarFirst(fragment.requireContext(), chat = false)
+      return
+    }
     val recordCount = mediaRecords.size
     val res = fragment.resources
     val confirmTitle = res.getQuantityString(R.plurals.MediaOverviewActivity_Media_delete_confirm_title, recordCount, recordCount)

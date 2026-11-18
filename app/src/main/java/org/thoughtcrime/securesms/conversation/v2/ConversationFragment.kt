@@ -3225,6 +3225,11 @@ class ConversationFragment :
 
     val records = messageParts.map(MultiselectPart::getMessageRecord).toSet()
 
+    if (records.any { it.isStarred }) {
+      net.mikesimone.backchannel.StarredGuard.showUnstarFirst(requireContext(), chat = false)
+      return
+    }
+
     disposables += DeleteDialog.show(
       context = requireContext(),
       messageRecords = records,

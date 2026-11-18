@@ -1215,12 +1215,16 @@ class ConversationSettingsFragment :
             title = DSLSettingsText.from(R.string.ConversationSettingsFragment__delete_chat, alertTint),
             icon = DSLSettingsIcon.from(CoreUiR.drawable.symbol_trash_24, R.color.signal_alert_primary),
             onClick = {
-              val progressDialog = ProgressCardDialogFragment.create(getString(R.string.ConversationFragment_deleting_messages))
-              progressDialog.show(parentFragmentManager, null)
-              lifecycleScope.launch {
-                viewModel.deleteChat()
-                progressDialog.dismissAllowingStateLoss()
-                goToConversationList()
+              if (state.threadId > 0 && net.mikesimone.backchannel.StarredGuard.threadsHaveStarred(listOf(state.threadId))) {
+                net.mikesimone.backchannel.StarredGuard.showUnstarFirst(requireContext(), chat = true)
+              } else {
+                val progressDialog = ProgressCardDialogFragment.create(getString(R.string.ConversationFragment_deleting_messages))
+                progressDialog.show(parentFragmentManager, null)
+                lifecycleScope.launch {
+                  viewModel.deleteChat()
+                  progressDialog.dismissAllowingStateLoss()
+                  goToConversationList()
+                }
               }
             }
           )

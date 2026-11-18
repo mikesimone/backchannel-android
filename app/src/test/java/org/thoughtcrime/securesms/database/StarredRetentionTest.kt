@@ -97,6 +97,18 @@ class StarredRetentionTest {
     assertNull(messages.getMessageRecordOrNull(id))
   }
 
+  @Test
+  fun starredLookupsForDeleteGuard() {
+    val plain = insertIncoming(1000)
+    val starred = insertIncoming(1001)
+    assertEquals(false, messages.hasStarredInThreads(listOf(threadId)))
+    star(starred)
+    assertEquals(true, messages.hasStarredInThreads(listOf(threadId)))
+    assertEquals(false, messages.hasStarredInThreads(listOf(threadId + 1000)))
+    assertEquals(true, messages.anyStarred(listOf(plain, starred)))
+    assertEquals(false, messages.anyStarred(listOf(plain)))
+  }
+
   private fun star(id: Long) {
     SignalDatabase.writableDatabase.execSQL("UPDATE ${MessageTable.TABLE_NAME} SET ${MessageTable.STARRED} = 1 WHERE ${MessageTable.ID} = ?", arrayOf(id))
     assertEquals(true, messages.isStarred(id))

@@ -1146,6 +1146,11 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
   @SuppressLint("StaticFieldLeak")
   private void handleDelete(@NonNull Collection<Long> ids) {
+    if (net.mikesimone.backchannel.StarredGuard.threadsHaveStarred(ids)) {
+      net.mikesimone.backchannel.StarredGuard.showUnstarFirst(requireContext(), true);
+      return;
+    }
+
     if (DeleteSyncEducationDialog.shouldShow()) {
       lifecycleDisposable.add(
           DeleteSyncEducationDialog.show(getChildFragmentManager())
