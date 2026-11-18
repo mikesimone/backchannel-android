@@ -13,7 +13,8 @@ sealed class MultiselectPart(open val conversationMessage: ConversationMessage) 
   fun isExpired(): Boolean {
     val expiresAt = conversationMessage.messageRecord.expireStarted + conversationMessage.messageRecord.expiresIn
 
-    return expiresAt > 0 && expiresAt < System.currentTimeMillis()
+    // Backchannel: a starred message outlives its timer, so it stays selectable (e.g. to unstar it).
+    return expiresAt > 0 && expiresAt < System.currentTimeMillis() && !conversationMessage.messageRecord.isStarred
   }
 
   /**

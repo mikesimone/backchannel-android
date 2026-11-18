@@ -11,7 +11,7 @@ Conversations
 • Forward to as many chats as you like, with your own message on top and real @mentions in groups.
 • Send one poll to many chats at once.
 • Sticker replies, favorite stickers, and double-tap a message to react.
-• Starred messages.
+• Starred messages, never auto-deleted until you unstar them.
 • Remind me: long-press a message and pick when to be reminded about it.
 • Note to Self works as a reminder: a new note stays unread until you open it.
 • Keyword alerts: muted chats still notify you when someone uses words you pick.

@@ -319,6 +319,9 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     private const val INDEX_PARENT_STORY_ID = "message_parent_story_id_index"
     private const val INDEX_ARCHIVED_STORY = "message_story_archived_index"
     private const val INDEX_STARRED = "message_starred_index"
+
+    /** Backchannel: excludes starred messages and older revisions of a starred message. */
+    private const val NOT_STARRED_CHAIN = "AND $TABLE_NAME.$STARRED = 0 AND ($TABLE_NAME.$LATEST_REVISION_ID IS NULL OR $TABLE_NAME.$LATEST_REVISION_ID NOT IN (SELECT bc_s.$ID FROM $TABLE_NAME bc_s WHERE bc_s.$STARRED > 0))"
     private const val INDEX_NOTIFICATION_STATE = "message_notification_state_index"
     private const val INDEX_RATE_LIMITED = "message_rate_limited_index"
     private const val INDEX_SCHEDULED_NON_STORY = "message_scheduled_non_story_index"
@@ -2225,6 +2228,24 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     val threadIds = messageIds.map { getThreadIdForMessage(it) }.toSet()
     for (threadId in threadIds) {
       notifyConversationListeners(threadId)
+    }
+    if (!starred) {
+      // Backchannel: an unstarred message is subject to retention and disappearing timers again.
+      for (threadId in threadIds) {
+        if (threadId > 0) TrimThreadJob.enqueueAsync(threadId)
+      }
+      for (messageId in messageIds) {
+        readableDatabase
+          .select(EXPIRE_STARTED, EXPIRES_IN)
+          .from(TABLE_NAME)
+          .where("$ID = ? AND $EXPIRE_STARTED > 0 AND $EXPIRES_IN > 0", messageId)
+          .run()
+          .use { cursor ->
+            if (cursor.moveToFirst()) {
+              AppDependencies.expiringMessageManager.scheduleDeletion(messageId, true, cursor.requireLong(EXPIRE_STARTED), cursor.requireLong(EXPIRES_IN))
+            }
+          }
+      }
     }
     for (messageId in messageIds) {
       AppDependencies.databaseObserver.notifyMessageUpdateObservers(MessageId(messageId))
@@ -4307,12 +4328,24 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
 
   fun deleteMessagesInThreadBeforeDate(threadId: Long, date: Long, inclusive: Boolean): Int {
     val condition = if (inclusive) "<=" else "<"
-    val extraWhere = "AND ${TABLE_NAME}.$DATE_RECEIVED $condition $date"
+    // Backchannel: retention trims (keep-messages age and chat length) never delete a starred
+    // message or its edit history. It stays until the user unstars it.
+    val extraWhere = "AND ${TABLE_NAME}.$DATE_RECEIVED $condition $date $NOT_STARRED_CHAIN"
 
-    return deleteMessagesInThread(listOf(threadId), extraWhere)
+    return deleteMessagesInThread(listOf(threadId), extraWhere, protectStarred = true)
   }
 
-  fun deleteMessagesInThread(threadIds: Collection<Long>, extraWhere: String = ""): Int {
+  /** Backchannel: true if the message is starred. Disappearing-message expiry skips starred messages. */
+  fun isStarred(messageId: Long): Boolean {
+    return readableDatabase
+      .select(STARRED)
+      .from(TABLE_NAME)
+      .where(ID_WHERE, messageId)
+      .run()
+      .readToSingleInt() > 0
+  }
+
+  fun deleteMessagesInThread(threadIds: Collection<Long>, extraWhere: String = "", protectStarred: Boolean = false): Int {
     var totalDeletedCount = 0
 
     val threadsWithPossibleDeletes = threadIds.filter { threadId ->
@@ -4342,6 +4375,10 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
           // Expand to include revision chain members so they're always deleted together
           db.execSQL("INSERT OR IGNORE INTO $batchTable SELECT $ID FROM $TABLE_NAME WHERE $LATEST_REVISION_ID IN (SELECT $ID FROM $batchTable)")
           db.execSQL("INSERT OR IGNORE INTO $batchTable SELECT $ID FROM $TABLE_NAME WHERE $ORIGINAL_MESSAGE_ID IN (SELECT $ID FROM $batchTable)")
+          if (protectStarred) {
+            // The revision expansion above can pull a starred message back in through its edit chain.
+            db.execSQL("DELETE FROM $batchTable WHERE $ID IN (SELECT $ID FROM $TABLE_NAME WHERE $STARRED > 0 OR $LATEST_REVISION_ID IN (SELECT $ID FROM $TABLE_NAME WHERE $STARRED > 0))")
+          }
 
           db.delete(StorySendTable.TABLE_NAME)
             .where("${StorySendTable.TABLE_NAME}.${StorySendTable.MESSAGE_ID} IN ($batchSelect)")
@@ -5213,7 +5250,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     return readableDatabase
       .select(DATE_RECEIVED)
       .from(TABLE_NAME)
-      .where("$DATE_RECEIVED > $date AND $SCHEDULED_DATE = -1 AND $LATEST_REVISION_ID IS NULL")
+      .where("$DATE_RECEIVED > $date AND $SCHEDULED_DATE = -1 AND $LATEST_REVISION_ID IS NULL AND $STARRED = 0")
       .orderBy("$DATE_RECEIVED ASC")
       .limit(1)
       .run()
@@ -5224,7 +5261,7 @@ open class MessageTable(context: Context?, databaseHelper: SignalDatabase) : Dat
     return readableDatabase
       .select("COUNT(*)")
       .from(TABLE_NAME)
-      .where("$DATE_RECEIVED < $date AND $SCHEDULED_DATE = -1 AND $LATEST_REVISION_ID IS NULL AND $COLLAPSED_STATE != ${CollapsedState.COLLAPSED.id}")
+      .where("$DATE_RECEIVED < $date AND $SCHEDULED_DATE = -1 AND $LATEST_REVISION_ID IS NULL AND $COLLAPSED_STATE != ${CollapsedState.COLLAPSED.id} AND $STARRED = 0")
       .run()
       .readToSingleInt()
   }

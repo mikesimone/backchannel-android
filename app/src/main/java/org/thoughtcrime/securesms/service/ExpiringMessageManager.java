@@ -110,6 +110,11 @@ public class ExpiringMessageManager {
         }
 
         if (expiredMessage != null) {
+          // Backchannel: starred messages never disappear; unstarring reschedules them.
+          if (messageTable.isStarred(expiredMessage.id)) {
+            Log.i(TAG, "Skipping expiry for starred message " + expiredMessage.id);
+            continue;
+          }
           messageTable.deleteMessage(expiredMessage.id);
         }
       }
