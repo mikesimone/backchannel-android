@@ -35,6 +35,9 @@ guessed app-content URLs redirect elsewhere.
   warning in the run) and Mike sends that first one for review by hand.
   **First approval: bc11 published on closed testing (alpha) 2026-11-09**, so
   from bc12 on each tag goes straight to review with no draft fallback.
+- **Production: bc18 (v8.19.2-4-bc18, 17190418) promoted alpha -> production at 100% on 2026-11-18**
+  (Play promote run 44410984733), after Google approved production access. New tags still go to
+  alpha first; run Play promote to move each one to production.
 - Production access: 12 testers opted in continuously since about 2026-11-02 (7 days on
   2026-11-09), so "Apply for production" unlocks about 2026-11-16 if none drop out. Applying
   asks questions about the closed test (how testers used it, feedback, changes made).
