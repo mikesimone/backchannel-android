@@ -314,8 +314,7 @@ scene("Gallery & groups", "Less clutter, more control",
                          srow("Blur photos and videos", "", on=False),
                          srow("Hide group updates from regular members", "Joined, left, name and photo changes", on=2.6),
                          srow("Default emoji skin tone", "", "👍🏽"),
-                         srow("Hidden contacts", "", "2"),
-                         srow("Speech model", "Downloads only if you turn transcripts on", "")])
+                         srow("Hidden contacts", "", "2")])
       + tap(840, 300, 0.9) + tap(840, 520, 2.3)
       + a('<div class="note" style="position:absolute;left:40px;right:40px;bottom:60px">Archived or muted groups are skipped unless you set them to Always</div>', 3.8, "up"))
 
