@@ -63,6 +63,7 @@ class StickerManagementActivity : PassphraseRequiredActivity() {
               override fun onForwardClick(pack: AvailableStickerPack) = openShareSheet(pack.id, pack.key)
               override fun onInstallClick(pack: AvailableStickerPack) = viewModel.installStickerPack(pack)
               override fun onShowPreviewClick(pack: AvailableStickerPack) = navigateToStickerPreview(pack.id, pack.key)
+              override fun onHideClick(pack: AvailableStickerPack) = viewModel.hideStickerPack(pack)
             }
           },
           installedTabCallbacks = remember {

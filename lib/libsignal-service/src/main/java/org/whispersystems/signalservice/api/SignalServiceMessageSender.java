@@ -1061,6 +1061,10 @@ public class SignalServiceMessageSender {
                                                                 .authorAciBinary(message.getQuote().get().getAuthor().toByteString())
                                                                 .type(message.getQuote().get().getType().getProtoType());
 
+      if (message.getQuote().get().getGroupId() != null) {
+        quoteBuilder.groupId(okio.ByteString.of(message.getQuote().get().getGroupId()));
+      }
+
       List<SignalServiceDataMessage.Mention> mentions = message.getQuote().get().getMentions();
       if (mentions != null && !mentions.isEmpty()) {
         List<BodyRange> bodyRanges = new ArrayList<>(quoteBuilder.bodyRanges);

@@ -84,6 +84,7 @@ public class QuoteView extends ConstraintLayout implements RecipientForeverObser
   }
 
   private SenderNameWithLabelView authorView;
+  private @Nullable String         groupLabel;
   private EmojiTextView           bodyView;
   private View                    quoteBarView;
   private ShapeableImageView      thumbnailView;
@@ -212,6 +213,7 @@ public class QuoteView extends ConstraintLayout implements RecipientForeverObser
   {
     if (this.author != null) this.author.removeForeverObserver(this);
 
+    this.groupLabel  = null;
     this.id          = id;
     this.author      = author.live();
     this.body        = body;
@@ -277,6 +279,12 @@ public class QuoteView extends ConstraintLayout implements RecipientForeverObser
     return new Projection.Corners(cornerMask.getRadii());
   }
 
+  /** BACKCHANNEL: shows "Author · Group" on a private reply to a group message. Call after setQuote. */
+  public void setGroupLabel(@Nullable String label) {
+    this.groupLabel = label;
+    if (this.author != null) setQuoteAuthor(this.author.get());
+  }
+
   private void setQuoteAuthor(@NonNull Recipient author) {
     String name;
     if (isStoryReply()) {
@@ -285,6 +293,10 @@ public class QuoteView extends ConstraintLayout implements RecipientForeverObser
     } else {
       name = author.isSelf() ? getContext().getString(R.string.QuoteView_you)
                              : author.getDisplayName(getContext());
+    }
+
+    if (groupLabel != null && !isStoryReply()) {
+      name = name + " · " + groupLabel;
     }
 
     QuoteViewColorTheme colorTheme      = getColorTheme();

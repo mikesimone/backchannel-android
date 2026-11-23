@@ -125,6 +125,7 @@ interface AvailableStickersContentCallbacks {
   fun onForwardClick(pack: AvailableStickerPack)
   fun onInstallClick(pack: AvailableStickerPack)
   fun onShowPreviewClick(pack: AvailableStickerPack)
+  fun onHideClick(pack: AvailableStickerPack) = Unit
 
   object Empty : AvailableStickersContentCallbacks {
     override fun onForwardClick(pack: AvailableStickerPack) = Unit
@@ -426,6 +427,7 @@ private fun AvailableStickersContent(
             menuController = menuController,
             onForwardClick = callbacks::onForwardClick,
             onInstallClick = callbacks::onInstallClick,
+            onHideClick = callbacks::onHideClick,
             modifier = Modifier
               .animateItem()
               .combinedClickable(

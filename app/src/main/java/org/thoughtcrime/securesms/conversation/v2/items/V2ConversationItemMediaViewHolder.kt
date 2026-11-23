@@ -92,6 +92,7 @@ class V2ConversationItemMediaViewHolder<Model : MappingModel<Model>>(
       false,
       conversationMessage.quoteMemberLabel
     )
+    quoteView.setGroupLabel(net.mikesimone.backchannel.QuoteGroups.labelFor(context, record, conversationMessage.threadRecipient))
 
     quoteView.setMessageType(
       when {

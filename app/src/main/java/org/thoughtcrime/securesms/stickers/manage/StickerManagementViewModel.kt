@@ -44,8 +44,8 @@ class StickerManagementViewModel : ViewModel() {
   }
 
   private suspend fun loadStickerPacks() {
-    combine(stickerManagementRepo.getStickerPacks(), downloadStatusByPackId, ::Pair)
-      .collectLatest { (stickerPacksResult, downloadStatuses) ->
+    combine(stickerManagementRepo.getStickerPacks(), downloadStatusByPackId, net.mikesimone.backchannel.HiddenStickerPacks.flow(), ::Triple)
+      .collectLatest { (stickerPacksResult, downloadStatuses, hiddenPackIds) ->
         val recentlyInstalledPacks = stickerPacksResult.installedPacks.filter { downloadStatuses.contains(StickerPackId(it.packId)) }
         val allAvailablePacks = (stickerPacksResult.blessedPacks + stickerPacksResult.availablePacks + recentlyInstalledPacks)
           .map { record ->
@@ -60,7 +60,9 @@ class StickerManagementViewModel : ViewModel() {
           }
           .sortedBy { stickerPacksResult.sortOrderByPackId.getValue(it.id) }
 
-        val (availableBlessedPacks, availableNotBlessedPacks) = allAvailablePacks.partition { it.isBlessed }
+        val (availableBlessedPacks, allNotBlessedPacks) = allAvailablePacks.partition { it.isBlessed }
+        // BACKCHANNEL: received packs the user hid stay out of the list.
+        val availableNotBlessedPacks = allNotBlessedPacks.filterNot { hiddenPackIds.contains(it.record.packId) }
         val installedPacks = stickerPacksResult.installedPacks.map { record ->
           InstalledStickerPack(
             record = record,
@@ -78,6 +80,11 @@ class StickerManagementViewModel : ViewModel() {
           )
         }
       }
+  }
+
+  /** BACKCHANNEL: hide a received pack from "Stickers you received". */
+  fun hideStickerPack(pack: AvailableStickerPack) {
+    net.mikesimone.backchannel.HiddenStickerPacks.hide(pack.record.packId)
   }
 
   fun installStickerPack(pack: AvailableStickerPack) {

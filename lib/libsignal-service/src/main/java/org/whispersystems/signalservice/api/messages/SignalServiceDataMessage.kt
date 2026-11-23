@@ -303,7 +303,9 @@ class SignalServiceDataMessage private constructor(
     val attachments: List<QuotedAttachment>?,
     val mentions: List<Mention>?,
     val type: Type,
-    val bodyRanges: List<BodyRange>?
+    val bodyRanges: List<BodyRange>?,
+    /** BACKCHANNEL: the group of the quoted message, for a private reply to a group message. */
+    val groupId: ByteArray? = null
   ) {
     enum class Type(val protoType: QuoteProto.Type) {
       NORMAL(QuoteProto.Type.NORMAL),

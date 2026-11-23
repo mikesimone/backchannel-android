@@ -6,11 +6,11 @@ Backchannel is not made by Signal and is not affiliated with Signal Messenger LL
 
 WHAT BACKCHANNEL ADDS
 Conversations
-• Reply privately: answer someone's group message in a 1:1 chat, with their message quoted.
+• Reply privately: answer someone's group message in a 1:1 chat, with their message and group quoted.
 • Reply to one photo of a multi-photo message, with your own photos, videos, GIFs (or search for one), files or a sticker.
 • Forward to as many chats as you like, with your own message on top and real @mentions in groups.
 • Send one poll to many chats at once.
-• Sticker replies, favorite stickers, and double-tap a message to react.
+• Sticker replies, favorite stickers, hide sticker packs people send you, and double-tap a message to react.
 • Starred messages, never auto-deleted until you unstar them.
 • Remind me: long-press a message and pick when to be reminded about it.
 • Note to Self works as a reminder: a new note stays unread until you open it.

@@ -70,6 +70,7 @@ fun AvailableStickerPackRow(
   menuController: DropdownMenus.MenuController,
   onForwardClick: (AvailableStickerPack) -> Unit = {},
   onInstallClick: (AvailableStickerPack) -> Unit = {},
+  onHideClick: ((AvailableStickerPack) -> Unit)? = null,
   modifier: Modifier = Modifier
 ) {
   Row(
@@ -140,6 +141,17 @@ fun AvailableStickerPackRow(
           menuController.hide()
         }
       )
+
+      if (onHideClick != null) {
+        MenuItem(
+          icon = ImageVector.vectorResource(R.drawable.symbol_visible_slash),
+          text = stringResource(R.string.StickerManagement__backchannel_hide_pack),
+          onClick = {
+            onHideClick(pack)
+            menuController.hide()
+          }
+        )
+      }
     }
   }
 }

@@ -1431,6 +1431,10 @@ object DataMessageProcessor {
   fun getValidatedQuote(context: Context, timestamp: Long, message: DataMessage, senderRecipient: Recipient, threadRecipient: Recipient): QuoteModel? {
     val quote: DataMessage.Quote = message.quote ?: return null
 
+    if (quote.groupId != null && !threadRecipient.isGroup) {
+      net.mikesimone.backchannel.QuoteGroups.rememberIncoming(context, timestamp, senderRecipient.id, quote.groupId!!.toByteArray())
+    }
+
     if (quote.id == null) {
       warn(timestamp, "Received quote without an ID! Ignoring...")
       return null

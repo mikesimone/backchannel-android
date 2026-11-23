@@ -377,7 +377,8 @@ abstract class PushSendJob protected constructor(parameters: Parameters) : BaseJ
           attachments = quoteAttachments,
           mentions = quoteMentions,
           type = quoteType.dataMessageType,
-          bodyRanges = bodyRanges
+          bodyRanges = bodyRanges,
+          groupId = net.mikesimone.backchannel.QuoteGroups.groupIdForOutgoing(quoteId, quoteAuthor, message.threadRecipient)
         )
       )
     } else {

@@ -257,6 +257,7 @@ message DataMessage {
     repeated BodyRange bodyRanges = 6;
     optional Type type = 7;
     optional bytes authorAciBinary = 8; // 16-byte UUID
+    optional bytes groupId = 9; // BACKCHANNEL: private reply to a group message (Signal Desktop 8.39)
   }
 
   message Contact {

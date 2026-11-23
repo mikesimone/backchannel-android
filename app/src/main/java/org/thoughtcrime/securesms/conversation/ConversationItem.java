@@ -1814,6 +1814,7 @@ public final class ConversationItem extends RelativeLayout implements BindableCo
                          quote.getQuoteType(),
                          false,
                          conversationMessage.getQuoteMemberLabel());
+      quoteView.setGroupLabel(net.mikesimone.backchannel.QuoteGroups.labelFor(context, current, conversationRecipient.get()));
 
       quoteView.setWallpaperEnabled(hasWallpaper);
       quoteView.setVisibility(View.VISIBLE);
