@@ -12,6 +12,8 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "$URL" || echo 000)
 
 cd /home/msimone/backchannel-android
 gh workflow enable play-listing.yml
+# New tags go back to sending alpha builds straight to review (draft-only while production waited).
+gh variable delete PLAY_RELEASE_STATUS || true
 gh workflow run play-listing.yml --ref main
 /home/msimone/noc-in-a-box/slack-notify.sh six "🎉 Backchannel is live on Google Play: $URL
 I've turned the Play listing workflow back on and sent the feature-tour video (https://youtu.be/3hVrkXUxZZU) to the store listing. Listing changes go to Google review on their own." || true

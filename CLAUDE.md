@@ -20,5 +20,12 @@ So:
 - Never run `play_listing.py`, `fastlane supply` with metadata, or any Play API edit that touches
   listings outside the promote step. If in doubt, ask Mike first.
 
+## Nothing goes to Google while a production review is pending
+
+The same applies to builds: while a production release waits for review, the repo variable
+`PLAY_RELEASE_STATUS=draft` makes new tags upload to Play as drafts only (they don't join the
+review). On 2026-11-18 a bc19 tag two minutes after the production submission went to review
+with it. `backchannel/play-live-watch.sh` deletes the variable once the app is live.
+
 Other standing rules (author identity, no AI attribution, commit and push) come from
 `~/Environment/AI/GLOBAL-RULES.md`.
