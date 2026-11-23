@@ -121,6 +121,12 @@ guessed app-content URLs redirect elsewhere.
   - The store build doesn't request SMS or call-log permissions; if Play
     flags one, check the merged manifest before declaring anything.
 
+## Listing rule (Mike, 2026-11-23, standing)
+
+Never change the store listing (description, video, images) before the build that has those features
+is live in production. Listing edits wait in the repo; the `Play listing` workflow runs only by hand,
+after that version is live. Its push trigger stays off.
+
 ## Still to do
 
 - **After production is live (not before; Mike 2026-11-23):** the store listing gets the feature video
