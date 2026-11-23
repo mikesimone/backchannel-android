@@ -48,6 +48,10 @@ guessed app-content URLs redirect elsewhere.
 - Production access: 12 testers opted in continuously since about 2026-11-02 (7 days on
   2026-11-09), so "Apply for production" unlocks about 2026-11-16 if none drop out. Applying
   asks questions about the closed test (how testers used it, feedback, changes made).
+- **Store listing text reaches Google only with a production release (Mike 2026-11-23):** the
+  `Play promote` workflow uploads `fastlane/metadata` right after promoting to production; the
+  `Play listing` workflow is manual-only (no push trigger, ever) and refuses before the app is public.
+  See `CLAUDE.md`.
 - Release notes: `fastlane/metadata/android/en-US/changelogs/default.txt`.
 - In-app What's New (`WhatsNew__body` in `strings_backchannel_main.xml`), from version 14
   (Mike 2026-11-11): "New in this release" (this release's features AND fixes, fixes as

@@ -22,6 +22,18 @@ def read(path):
         return f.read().strip()
 
 
+# Mike 2026-11-23: never change the store listing before the version is in production.
+# Before the app's first public release the public store page is 404; refuse then.
+import urllib.request, urllib.error
+try:
+    _live = urllib.request.urlopen(
+        "https://play.google.com/store/apps/details?id=" + PACKAGE + "&hl=en", timeout=30).status == 200
+except urllib.error.HTTPError:
+    _live = False
+if not _live:
+    print("Backchannel isn't public on Google Play yet: not touching the store listing.")
+    raise SystemExit(0)
+
 creds = service_account.Credentials.from_service_account_file(
     os.environ["PLAY_JSON"], scopes=["https://www.googleapis.com/auth/androidpublisher"]
 )

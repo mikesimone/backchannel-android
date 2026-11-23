@@ -3,17 +3,11 @@
 name: Play listing
 
 on:
-  # BACKCHANNEL 2026-11-23: push trigger paused while the first production release is in review
-  # (a listing commit joins that review). After production is live: run this once by hand, then
-  # restore the push trigger below.
+  # BACKCHANNEL (Mike 2026-11-23): NEVER on push. Store-listing text only reaches Google
+  # together with a production release (the Play promote workflow uploads it right after
+  # promoting), or by hand once the app is live. backchannel/play_listing.py also refuses
+  # to upload while the public store page doesn't exist yet.
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - "fastlane/metadata/**"
-  #     # Release notes ship with the next build; editing them alone shouldn't send a listing to review.
-  #     - "!fastlane/metadata/android/*/changelogs/**"
 
 permissions:
   contents: read

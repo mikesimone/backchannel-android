@@ -50,3 +50,23 @@ jobs:
           FROM_TRACK: ${{ inputs.from_track }}
           TO_TRACK: ${{ inputs.to_track }}
           ROLLOUT: ${{ inputs.rollout }}
+
+      # BACKCHANNEL (Mike 2026-11-23): store-listing text changes go to Google only together
+      # with a production release, never before. Upload it right after promoting to production.
+      - uses: actions/checkout@v6
+        if: inputs.to_track == 'production'
+
+      - uses: actions/setup-python@v5
+        if: inputs.to_track == 'production'
+        with:
+          python-version: "3.12"
+
+      - name: Upload store listing with the production release
+        if: inputs.to_track == 'production'
+        run: |
+          python3 -m pip install --quiet google-api-python-client==2.154.0 google-auth==2.36.0
+          printenv PLAY_JSON > "$RUNNER_TEMP/play.json"
+          trap 'rm -f "$RUNNER_TEMP/play.json"' EXIT
+          PLAY_JSON="$RUNNER_TEMP/play.json" python3 backchannel/play_listing.py
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
