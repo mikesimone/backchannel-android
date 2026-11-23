@@ -38,6 +38,13 @@ guessed app-content URLs redirect elsewhere.
 - **Production: bc18 (v8.19.2-4-bc18, 17190418) promoted alpha -> production at 100% on 2026-11-18**
   (Play promote run 44410984733), after Google approved production access. New tags still go to
   alpha first; run Play promote to move each one to production.
+- **Listing frozen until the app is public (Mike 2026-11-23).** Besides the paused push trigger, the
+  `Play listing` workflow is also disabled (`gh workflow disable play-listing.yml`) so not even a manual
+  run reaches Google while the production release waits for review. `backchannel/play-live-watch.sh`
+  (run every 30 min by `play-live-watch.timer` on Six) checks the public store page; when it answers
+  200 it re-enables the workflow and runs it, which adds the promo video
+  (`fastlane/metadata/android/en-US/video.txt`, https://youtu.be/3hVrkXUxZZU), DMs Mike, and
+  disables its timer. Don't re-enable the workflow by hand before then. Afterwards, restore its push trigger.
 - Production access: 12 testers opted in continuously since about 2026-11-02 (7 days on
   2026-11-09), so "Apply for production" unlocks about 2026-11-16 if none drop out. Applying
   asks questions about the closed test (how testers used it, feedback, changes made).

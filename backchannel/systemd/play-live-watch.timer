@@ -1,0 +1,10 @@
+[Unit]
+Description=Check every 30 min whether Backchannel is live on Google Play
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

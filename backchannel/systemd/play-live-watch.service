@@ -1,0 +1,10 @@
+[Unit]
+Description=Backchannel: add the promo video to the Play listing once the app is live
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=msimone
+Environment=HOME=/home/msimone
+ExecStart=/home/msimone/backchannel-android/backchannel/play-live-watch.sh
