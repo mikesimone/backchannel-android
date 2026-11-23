@@ -38,6 +38,10 @@ for lang in sorted(os.listdir(ROOT)):
         "shortDescription": read(os.path.join(d, "short_description.txt")),
         "fullDescription": read(os.path.join(d, "full_description.txt")),
     }
+    # Promo video (YouTube URL). A listing update replaces the whole listing, so always send it when present.
+    video = os.path.join(d, "video.txt")
+    if os.path.exists(video):
+        body["video"] = read(video)
     edits.listings().update(packageName=PACKAGE, editId=edit_id, language=lang, body=body).execute()
     print(f"{lang}: text updated")
 

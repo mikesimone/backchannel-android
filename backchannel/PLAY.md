@@ -116,6 +116,10 @@ guessed app-content URLs redirect elsewhere.
 
 ## Still to do
 
+- **After production is live (not before; Mike 2026-11-23):** the store listing gets the feature video
+  https://youtu.be/3hVrkXUxZZU (already in `fastlane/metadata/android/en-US/video.txt`). Run the
+  `Play listing` workflow by hand once, then restore its push trigger (paused 2026-11-23 so listing
+  edits stop joining the production review).
 - Phone screenshots: real captures only (Mike 2026-10-15 16:29 PT, no drawn mockups). Add group-feature shots (reply privately, forward, sticker replies) from a tester group; files in
   `fastlane/metadata/android/en-US/images/phoneScreenshots/`, made from a
   test account with no real names in view.
