@@ -86,7 +86,9 @@ class ContactSearchConfiguration private constructor(
       override val headerAction: HeaderAction? = null,
       override val expandConfig: ExpandConfig? = null,
       val includeLetterHeaders: Boolean = false,
-      val pushSearchResultsSortOrder: ContactSearchSortOrder = ContactSearchSortOrder.NATURAL
+      val pushSearchResultsSortOrder: ContactSearchSortOrder = ContactSearchSortOrder.NATURAL,
+      // BACKCHANNEL: leave out anyone already listed in this configuration's Recents section
+      val excludeRecents: Boolean = false
     ) : Section(SectionKey.INDIVIDUALS)
 
     /**
@@ -104,7 +106,9 @@ class ContactSearchConfiguration private constructor(
       val sortOrder: ContactSearchSortOrder = ContactSearchSortOrder.NATURAL,
       val shortSummary: Boolean = false,
       override val includeHeader: Boolean,
-      override val expandConfig: ExpandConfig? = null
+      override val expandConfig: ExpandConfig? = null,
+      // BACKCHANNEL: leave out groups already listed in this configuration's Recents section
+      val excludeRecents: Boolean = false
     ) : Section(SectionKey.GROUPS)
 
     /**

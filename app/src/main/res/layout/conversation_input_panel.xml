@@ -22,6 +22,18 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
+    <!-- BACKCHANNEL: formatting bar over the message box (net.mikesimone.backchannel.FormatBar) -->
+    <HorizontalScrollView
+        android:id="@+id/backchannel_format_bar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/input_panel_sticker_suggestion"
+        tools:visibility="visible" />
+
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/input_panel_exit_edit_mode"
         android:layout_width="40dp"
@@ -52,7 +64,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/button_toggle"
         app:layout_constraintStart_toEndOf="@id/input_panel_exit_edit_mode"
-        app:layout_constraintTop_toBottomOf="@id/input_panel_sticker_suggestion" />
+        app:layout_constraintTop_toBottomOf="@id/backchannel_format_bar" />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/edit_message_title"

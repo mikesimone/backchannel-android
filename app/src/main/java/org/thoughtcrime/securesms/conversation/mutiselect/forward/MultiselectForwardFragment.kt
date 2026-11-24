@@ -498,9 +498,12 @@ class MultiselectForwardFragment :
       }
 
       if (isSelectedMediaValidForNonStories()) {
+        // BACKCHANNEL: pinned chats (pin order), then every open chat (most recent first),
+        // then groups not already listed, then people not already listed.
         if (query.isNullOrEmpty()) {
           addSection(
             ContactSearchConfiguration.Section.Recents(
+              limit = Int.MAX_VALUE,
               includeHeader = true,
               includeSelf = true
             )
@@ -508,10 +511,18 @@ class MultiselectForwardFragment :
         }
 
         addSection(
+          ContactSearchConfiguration.Section.Groups(
+            includeHeader = true,
+            excludeRecents = true
+          )
+        )
+
+        addSection(
           ContactSearchConfiguration.Section.Individuals(
             includeHeader = true,
             transportType = ContactSearchConfiguration.TransportType.PUSH,
-            includeSelfMode = RecipientTable.IncludeSelfMode.IncludeWithRemap(getString(R.string.note_to_self))
+            includeSelfMode = RecipientTable.IncludeSelfMode.IncludeWithRemap(getString(R.string.note_to_self)),
+            excludeRecents = true
           )
         )
 
@@ -522,12 +533,6 @@ class MultiselectForwardFragment :
             )
           )
         }
-
-        addSection(
-          ContactSearchConfiguration.Section.Groups(
-            includeHeader = true
-          )
-        )
       }
     }
   }

@@ -136,6 +136,10 @@ public class ComposeText extends EmojiEditText {
       }
     }
 
+    if (backchannelSelectionHook != null) {
+      backchannelSelectionHook.run();
+    }
+
     if (cursorPositionChangedListener != null) {
       cursorPositionChangedListener.onCursorPositionChanged(selectionStart, selectionEnd);
     }
@@ -199,6 +203,13 @@ public class ComposeText extends EmojiEditText {
 
     append(invite);
     setSelection(getText().length());
+  }
+
+  // BACKCHANNEL: lets the formatting bar light its buttons for the styles at the cursor
+  @Nullable private Runnable backchannelSelectionHook;
+
+  public void setBackchannelSelectionHook(@Nullable Runnable hook) {
+    this.backchannelSelectionHook = hook;
   }
 
   public void setCursorPositionChangedListener(@Nullable CursorPositionChangedListener listener) {

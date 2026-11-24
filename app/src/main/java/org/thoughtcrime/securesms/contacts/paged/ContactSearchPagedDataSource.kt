@@ -131,8 +131,8 @@ class ContactSearchPagedDataSource(
 
   private fun getSectionSize(section: ContactSearchConfiguration.Section, query: String?): Int {
     return when (section) {
-      is ContactSearchConfiguration.Section.Individuals -> getNonGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, null)
-      is ContactSearchConfiguration.Section.Groups -> contactSearchPagedDataSourceRepository.getGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, this::canSendToGroup)
+      is ContactSearchConfiguration.Section.Individuals -> getNonGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, notInRecentsIndividual(section))
+      is ContactSearchConfiguration.Section.Groups -> contactSearchPagedDataSourceRepository.getGroupSearchIterator(section, query).getCollectionSizeAndClose(section, query, groupPredicate(section))
       is ContactSearchConfiguration.Section.Recents -> getRecentsSearchIterator(section, query).getCollectionSizeAndClose(section, query, notHiddenInBackchannel()) // BACKCHANNEL
       is ContactSearchConfiguration.Section.Stories -> getStoriesSearchIterator(query).getCollectionSizeAndClose(section, query, null)
       is ContactSearchConfiguration.Section.Arbitrary -> arbitraryRepository?.getSize(section, query) ?: error("Invalid arbitrary section.")
@@ -414,7 +414,7 @@ class ContactSearchPagedDataSource(
     return getNonGroupSearchIterator(section, query).use { records ->
       readContactData(
         records = records,
-        recordsPredicate = null,
+        recordsPredicate = notInRecentsIndividual(section),
         section = section,
         startIndex = startIndex,
         endIndex = endIndex,
@@ -431,7 +431,7 @@ class ContactSearchPagedDataSource(
     return contactSearchPagedDataSourceRepository.getGroupSearchIterator(section, query).use { records ->
       readContactData(
         records = records,
-        recordsPredicate = this::canSendToGroup,
+        recordsPredicate = groupPredicate(section),
         section = section,
         startIndex = startIndex,
         endIndex = endIndex,
@@ -444,6 +444,37 @@ class ContactSearchPagedDataSource(
         }
       )
     }
+  }
+
+  // BACKCHANNEL: forward/share picker lists open chats first, then only the groups and people not already listed.
+  // Recipient ids of the configuration's Recents section, read once per data source (worker thread).
+  private val recentRecipientIds: Set<Long> by lazy {
+    val recents = contactConfiguration.sections.filterIsInstance<ContactSearchConfiguration.Section.Recents>().firstOrNull()
+    if (recents == null || !contactConfiguration.query.isNullOrEmpty()) {
+      emptySet()
+    } else {
+      val ids = HashSet<Long>()
+      contactSearchPagedDataSourceRepository.getRecents(recents)?.use { cursor ->
+        while (cursor.moveToNext()) {
+          ids.add(cursor.requireLong(org.thoughtcrime.securesms.database.ThreadTable.RECIPIENT_ID))
+        }
+      }
+      ids
+    }
+  }
+
+  private fun notInRecentsIndividual(section: ContactSearchConfiguration.Section.Individuals): ((Cursor) -> Boolean)? {
+    if (!section.excludeRecents) return null
+    val ids = recentRecipientIds
+    if (ids.isEmpty()) return null
+    return { cursor -> !ids.contains(cursor.requireLong(ContactRepository.ID_COLUMN)) }
+  }
+
+  private fun groupPredicate(section: ContactSearchConfiguration.Section.Groups): (GroupRecord?) -> Boolean {
+    if (!section.excludeRecents) return this::canSendToGroup
+    val ids = recentRecipientIds
+    if (ids.isEmpty()) return this::canSendToGroup
+    return { record -> canSendToGroup(record) && !ids.contains(record!!.recipientId.toLong()) }
   }
 
   private fun canSendToGroup(groupRecord: GroupRecord?): Boolean {

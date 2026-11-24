@@ -25,6 +25,7 @@ import org.thoughtcrime.securesms.recipients.RecipientId;
 import org.thoughtcrime.securesms.util.CachedInflater;
 import org.thoughtcrime.securesms.util.ViewUtil;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -210,7 +211,91 @@ class ConversationListAdapter extends ListAdapter<Conversation, RecyclerView.Vie
       pagingController.onDataNeededAroundIndex(position);
     }
 
+    if (dragList != null) {
+      return dragList.get(position);
+    }
+
     return super.getItem(position);
+  }
+
+  @Override
+  public int getItemCount() {
+    return dragList != null ? dragList.size() : super.getItemCount();
+  }
+
+  // BACKCHANNEL: drag a pinned chat to change the pin order.
+  // While a drag runs the adapter shows its own copy of the list, and lists arriving from the
+  // database wait until the dropped order has been committed to the differ.
+  private @Nullable List<Conversation> dragList;
+  private @Nullable List<Conversation> pendingList;
+  private @Nullable Runnable           pendingCommit;
+  private           boolean            dragMoved;
+
+  void beginDrag() {
+    if (dragList == null) {
+      dragList  = new ArrayList<>(getCurrentList());
+      dragMoved = false;
+    }
+  }
+
+  boolean moveForDrag(int from, int to) {
+    if (dragList == null || from < 0 || to < 0 || from >= dragList.size() || to >= dragList.size() || from == to) {
+      return false;
+    }
+
+    dragList.add(to, dragList.remove(from));
+    dragMoved = true;
+    notifyItemMoved(from, to);
+    return true;
+  }
+
+  /**
+   * Ends a drag. Returns the list in its new order, or null when nothing moved.
+   */
+  @Nullable List<Conversation> endDrag() {
+    if (dragList == null) {
+      return null;
+    }
+
+    if (!dragMoved) {
+      dragList = null;
+      flushPending();
+      return null;
+    }
+
+    List<Conversation> finalList = new ArrayList<>(dragList);
+    super.submitList(finalList, () -> {
+      dragList = null;
+      notifyDataSetChanged();
+      flushPending();
+    });
+    return finalList;
+  }
+
+  private void flushPending() {
+    if (pendingList != null) {
+      List<Conversation> list   = pendingList;
+      Runnable           commit = pendingCommit;
+      pendingList   = null;
+      pendingCommit = null;
+      super.submitList(list, commit);
+    }
+  }
+
+  @Override
+  public void submitList(@Nullable List<Conversation> list) {
+    submitList(list, null);
+  }
+
+  @Override
+  public void submitList(@Nullable List<Conversation> list, @Nullable Runnable commitCallback) {
+    if (dragList != null) {
+      pendingList   = list;
+      pendingCommit = commitCallback;
+      return;
+    }
+
+    super.submitList(list, commitCallback);
   }
 
   @Override

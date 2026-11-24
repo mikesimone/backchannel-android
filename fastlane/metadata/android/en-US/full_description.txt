@@ -8,7 +8,7 @@ WHAT BACKCHANNEL ADDS
 Conversations
 • Reply privately: answer someone's group message in a 1:1 chat, with their message and group quoted.
 • Reply to one photo of a multi-photo message, with your own photos, videos, GIFs (or search for one), files or a sticker.
-• Forward to as many chats as you like, with your own message on top and real @mentions in groups.
+• Forward to as many chats as you like (pinned and recent chats first), with your own message on top and real @mentions in groups.
 • Send one poll to many chats at once.
 • Sticker replies, favorite stickers, hide sticker packs people send you, and double-tap a message to react.
 • Starred messages, never auto-deleted until you unstar them.
@@ -25,9 +25,9 @@ On your phone, nothing leaves it
 
 Writing
 • Markdown: *bold*, _italic_, ~strikethrough~, `monospace`, lists, indents, headings, quotes and code blocks, and Signal users see the formatting too.
-• Bold italic in one step from the format menu.
-• Copying a styled message gives you styled text you can paste anywhere, even into a text message.
-• Typed :) ;) :( turn into emoji, and one default emoji skin tone.
+• A formatting bar over the message box: bold, italic, strikethrough, monospace, spoiler and lists.
+• Bold italic in one step. Copy a styled message as styled text you can paste anywhere, even into a text message.
+• :) ;) :( turn into emoji; one default emoji skin tone.
 
 Photos
 • Attach from your own Immich server (its own login or single sign-on; uses your home address when you're home; search and sort albums), or share from Immich.
@@ -41,6 +41,7 @@ Contacts and privacy
 • Your own photo for anyone, even people not in your contacts.
 • Linked contacts and your contact photos show on your linked computers too (Backchannel Web and Signal Desktop).
 • Lock any chat behind your fingerprint.
+• Drag pinned chats to reorder them.
 • Hide or delete someone from your contacts without blocking them.
 • Optional: accept changed safety numbers without confirming each one (off by default).
 
@@ -51,7 +52,7 @@ MOVING OVER FROM SIGNAL
 Make an on-device backup in Signal, restore it in Backchannel, then disable or uninstall Signal. Your chats come with you, and Backchannel takes over your number on that phone.
 
 PRIVACY
-Backchannel collects nothing. There are no ads and no analytics. Your messages go only to the Signal network, end-to-end encrypted. Notifications use Google push when it's available, with a direct connection as the fallback.
+Backchannel collects nothing: no ads, no analytics. Your messages go only to the Signal network, end-to-end encrypted. Notifications use Google push when it's available, with a direct connection as the fallback.
 
 OPEN SOURCE
 Backchannel is free software under the GNU AGPLv3. Source code: https://github.com/mikesimone/backchannel-android

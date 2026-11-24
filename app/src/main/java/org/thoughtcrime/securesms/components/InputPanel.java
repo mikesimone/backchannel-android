@@ -190,6 +190,9 @@ public class InputPanel extends ConstraintLayout
     editMessageCancel.setOnClickListener(v -> exitEditMessageMode());
 
     quickCameraToggle.setVisibility(View.GONE);
+
+    // BACKCHANNEL: formatting bar over the message box
+    net.mikesimone.backchannel.FormatBar.attach(composeText, findViewById(R.id.backchannel_format_bar));
   }
 
   public void setListener(final @NonNull Listener listener) {

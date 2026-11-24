@@ -42,6 +42,10 @@ object Markdown {
   /** Set while this object edits text, so [Watcher] ignores those edits. */
   private var applying = false
 
+  /** True while Markdown is rewriting the text (other watchers, such as [FormatBar], skip those edits). */
+  @JvmStatic
+  fun isApplying(): Boolean = applying
+
   // --- reading the text -------------------------------------------------------
 
   private fun isMention(text: Spanned, i: Int): Boolean {

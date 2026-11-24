@@ -1340,7 +1340,56 @@ public class ConversationListFragment extends MainFragment implements Conversati
 
   @Override
   public boolean onConversationLongClick(@NonNull Conversation conversation, @NonNull View view) {
+    // BACKCHANNEL: holding a pinned chat starts a drag to reorder it. The menu opens on release
+    // when the chat didn't move (see ArchiveListenerCallback.clearView); this is only the fallback
+    // for when no drag started.
+    if (isPinDragCandidate(conversation)) {
+      view.postDelayed(() -> {
+        if (!pinDragActive && list != null && isAdded()) {
+          showConversationContextMenu(conversation, view, false);
+        }
+      }, 250);
+      return true;
+    }
     return showConversationContextMenu(conversation, view, false);
+  }
+
+  // BACKCHANNEL: drag a pinned chat to change the pin order
+  private boolean pinDragActive;
+
+  private boolean isPinDragCandidate(@Nullable Conversation conversation) {
+    return conversation != null &&
+           defaultAdapter != null &&
+           activeAdapter == defaultAdapter &&
+           !isArchived() &&
+           !mainToolbarViewModel.isInActionMode() &&
+           conversation.getType() == Conversation.Type.THREAD &&
+           conversation.getThreadRecord().isPinned();
+  }
+
+  private @Nullable Conversation pinnedConversationAt(@Nullable RecyclerView.ViewHolder viewHolder) {
+    if (viewHolder == null || defaultAdapter == null || activeAdapter != defaultAdapter) {
+      return null;
+    }
+    int position = viewHolder.getBindingAdapterPosition();
+    if (position == RecyclerView.NO_POSITION || position >= defaultAdapter.getItemCount()) {
+      return null;
+    }
+    Conversation conversation = defaultAdapter.getItem(position);
+    return isPinDragCandidate(conversation) ? conversation : null;
+  }
+
+  private void savePinOrder(@NonNull List<Conversation> conversations) {
+    List<Long> visible = new ArrayList<>();
+    for (Conversation conversation : conversations) {
+      if (conversation != null && conversation.getType() == Conversation.Type.THREAD && conversation.getThreadRecord().isPinned()) {
+        visible.add(conversation.getThreadRecord().getThreadId());
+      }
+    }
+    SignalExecutors.BOUNDED.execute(() -> {
+      List<Long> merged = net.mikesimone.backchannel.PinOrder.merge(SignalDatabase.threads().getPinnedThreadIds(), visible);
+      SignalDatabase.threads().restorePins(merged);
+    });
   }
 
   private boolean showConversationContextMenu(@NonNull Conversation conversation, @NonNull View view, boolean isFromSearch) {
@@ -1772,7 +1821,35 @@ public class ConversationListFragment extends MainFragment implements Conversati
                           @NonNull RecyclerView.ViewHolder viewHolder,
                           @NonNull RecyclerView.ViewHolder target)
     {
-      return false;
+      if (!pinDragActive || pinnedConversationAt(target) == null) {
+        return false;
+      }
+      return defaultAdapter.moveForDrag(viewHolder.getBindingAdapterPosition(), target.getBindingAdapterPosition());
+    }
+
+    private @Nullable Conversation draggedConversation;
+
+    @Override
+    public int getDragDirs(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+      return pinnedConversationAt(viewHolder) != null ? (ItemTouchHelper.UP | ItemTouchHelper.DOWN) : 0;
+    }
+
+    @Override
+    public boolean canDropOver(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder current, @NonNull RecyclerView.ViewHolder target) {
+      return pinDragActive && pinnedConversationAt(target) != null;
+    }
+
+    @Override
+    public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder, int actionState) {
+      super.onSelectedChanged(viewHolder, actionState);
+      if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+        draggedConversation = pinnedConversationAt(viewHolder);
+        if (draggedConversation != null) {
+          pinDragActive = true;
+          defaultAdapter.beginDrag();
+          ViewCompat.setElevation(viewHolder.itemView, DimensionUnit.DP.toPixels(4f));
+        }
+      }
     }
 
     @Override
@@ -1897,6 +1974,24 @@ public class ConversationListFragment extends MainFragment implements Conversati
     @Override
     public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
       super.clearView(recyclerView, viewHolder);
+
+      if (pinDragActive) {
+        pinDragActive = false;
+        ViewCompat.setElevation(viewHolder.itemView, 0);
+        Conversation       held      = draggedConversation;
+        List<Conversation> reordered = defaultAdapter != null ? defaultAdapter.endDrag() : null;
+        draggedConversation = null;
+        if (reordered != null) {
+          savePinOrder(reordered);
+        } else if (held != null && list != null) {
+          View itemView = viewHolder.itemView;
+          list.post(() -> {
+            if (list != null && isAdded()) {
+              showConversationContextMenu(held, itemView, false);
+            }
+          });
+        }
+      }
 
       if (itemAnimator == null) {
         return;
