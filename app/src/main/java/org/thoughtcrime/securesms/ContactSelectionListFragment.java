@@ -885,7 +885,8 @@ public final class ContactSelectionListFragment extends LoggingFragment {
             sectionHeaderAction,
             null,
             !hideLetterHeaders(),
-            newConversationCallback != null ? ContactSearchSortOrder.RECENCY : ContactSearchSortOrder.NATURAL
+            newConversationCallback != null ? ContactSearchSortOrder.RECENCY : ContactSearchSortOrder.NATURAL,
+            false
         ));
       }
 
@@ -898,7 +899,8 @@ public final class ContactSelectionListFragment extends LoggingFragment {
             ContactSearchSortOrder.NATURAL,
             false,
             true,
-            null
+            null,
+            false
         ));
       }
 
