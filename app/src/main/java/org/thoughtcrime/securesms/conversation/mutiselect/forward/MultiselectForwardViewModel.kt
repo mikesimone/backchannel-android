@@ -26,10 +26,14 @@ class MultiselectForwardViewModel(
   val state: LiveData<MultiselectForwardState> = store.stateLiveData
   val snapshot: MultiselectForwardState get() = store.state
 
+  // BACKCHANNEL: every photo and video in the forward; with two or more, any can be left out
+  private val allForwardMedia = args.multiShareArgs.flatMap { it.media }
+
   private val internalBottomBarState = MutableStateFlow(
     MultiselectForwardBottomBarState(
       sendButtonColors = args.sendButtonColors,
-      isSendButtonVisible = !args.selectSingleRecipient
+      isSendButtonVisible = !args.selectSingleRecipient,
+      forwardMedia = if (allForwardMedia.size >= 2) allForwardMedia else emptyList()
     )
   )
 
@@ -59,6 +63,30 @@ class MultiselectForwardViewModel(
 
   fun setAddMessageVisible(isAddMessageVisible: Boolean) {
     internalBottomBarState.update { it.copy(isAddMessageVisible = isAddMessageVisible) }
+  }
+
+  fun removeMedia(media: org.signal.core.models.media.Media) {
+    internalBottomBarState.update { state ->
+      if (state.forwardMedia.size <= 1) state else state.copy(forwardMedia = state.forwardMedia.filterNot { it.uri == media.uri })
+    }
+  }
+
+  /** The forward as it will be sent: photos and videos left out in the bar are dropped. */
+  fun argsToSend(): List<org.thoughtcrime.securesms.sharing.MultiShareArgs> {
+    if (allForwardMedia.size < 2) return args.multiShareArgs
+    val keep = internalBottomBarState.value.forwardMedia.map { it.uri }.toSet()
+    return args.multiShareArgs.mapNotNull { arg ->
+      if (arg.media.isEmpty()) {
+        arg
+      } else {
+        val left = arg.media.filter { it.uri in keep }
+        when {
+          left.size == arg.media.size -> arg
+          left.isEmpty() && arg.draftText.isNullOrEmpty() -> null
+          else -> arg.buildUpon().withMedia(left).build()
+        }
+      }
+    }
   }
 
   fun setMessage(message: String) {
@@ -107,7 +135,7 @@ class MultiselectForwardViewModel(
     } else {
       MultiselectForwardRepository.send(
         additionalMessage = bottomBarState.value.message,
-        multiShareArgs = args.multiShareArgs,
+        multiShareArgs = argsToSend(),
         shareContacts = selectedContacts,
         MultiselectForwardRepository.MultiselectForwardResultHandlers(
           onAllMessageSentSuccessfully = { store.update { it.copy(stage = MultiselectForwardState.Stage.Success) } },

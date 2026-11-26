@@ -3,6 +3,7 @@ package org.thoughtcrime.securesms.conversation.ui.mentions;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
@@ -28,6 +29,7 @@ public class MentionsPickerViewModel extends ViewModel {
   private final MutableLiveData<LiveRecipient>  liveRecipient;
   private final MutableLiveData<Query>          liveQuery;
   private final MutableLiveData<Boolean>        isShowing;
+  private final MutableLiveData<List<RecipientId>> multiGroups = new MutableLiveData<>();
 
   MentionsPickerViewModel(@NonNull MentionsPickerRepository mentionsPickerRepository) {
     this.liveRecipient       = new MutableLiveData<>();
@@ -38,7 +40,13 @@ public class MentionsPickerViewModel extends ViewModel {
     LiveData<Recipient>         recipient    = Transformations.switchMap(liveRecipient, LiveRecipient::getLiveData);
     LiveData<List<RecipientId>> fullMembers  = Transformations.distinctUntilChanged(LiveDataUtil.mapAsync(recipient, mentionsPickerRepository::getMembers));
 
-    LiveData<MentionQuery>      mentionQuery = LiveDataUtil.combineLatest(liveQuery, fullMembers, (q, m) -> new MentionQuery(q.query, m));
+    // BACKCHANNEL: sharing to several chats offers the members of every chosen group
+    LiveData<List<RecipientId>> groupsMembers = LiveDataUtil.mapAsync(multiGroups, mentionsPickerRepository::getMembersOfAll);
+    MediatorLiveData<List<RecipientId>> members = new MediatorLiveData<>();
+    members.addSource(fullMembers, members::setValue);
+    members.addSource(groupsMembers, members::setValue);
+
+    LiveData<MentionQuery>      mentionQuery = LiveDataUtil.combineLatest(liveQuery, members, (q, m) -> new MentionQuery(q.query, m));
 
     this.mentionList = LiveDataUtil.mapAsync(mentionQuery, q -> mentionsPickerRepository.search(q).stream().<MappingModel<?>>map(MentionViewState::new).collect(Collectors.toList()));
   }
@@ -72,6 +80,11 @@ public class MentionsPickerViewModel extends ViewModel {
 
   public void onRecipientChange(@NonNull Recipient recipient) {
     this.liveRecipient.setValue(recipient.live());
+  }
+
+  /** BACKCHANNEL: the chats a share goes to; mentions offer the members of all their groups. */
+  public void onRecipientsChange(@NonNull List<RecipientId> recipientIds) {
+    this.multiGroups.setValue(recipientIds);
   }
 
   /**

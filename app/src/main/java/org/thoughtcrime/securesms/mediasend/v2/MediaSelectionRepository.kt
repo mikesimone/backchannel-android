@@ -97,7 +97,17 @@ class MediaSelectionRepository(context: Context) {
 
     return Maybe.create { emitter ->
       val trimmedBody: String = if (isViewOnce) "" else getTruncatedBody(message?.toString()?.trim()) ?: ""
-      val trimmedMentions: List<Mention> = if (isViewOnce) emptyList() else mentions
+      // BACKCHANNEL: sharing to several chats, a typed "@Name" also becomes a mention in groups that person is in
+      val trimmedMentions: List<Mention> = if (isViewOnce) {
+        emptyList()
+      } else if (contacts.size > 1) {
+        net.mikesimone.backchannel.ForwardMentions.mergeTyped(
+          mentions,
+          net.mikesimone.backchannel.ForwardMentions.find(context, trimmedBody, contacts.map { it.recipientId })
+        )
+      } else {
+        mentions
+      }
       val trimmedBodyRanges: BodyRangeList? = if (isViewOnce) null else bodyRanges
       val modelsToTransform: Map<Media, MediaTransform> = buildModelsToTransform(selectedMedia, stateMap, sentMediaQuality)
       val oldToNewMediaMap: Map<Media, Media> = MediaRepository.transformMediaSync(context, selectedMedia, modelsToTransform)
@@ -322,7 +332,7 @@ class MediaSelectionRepository(context: Context) {
         attachments = slideDeck.asAttachments(),
         sentTimeMillis = System.currentTimeMillis(),
         isViewOnce = isViewOnce,
-        mentions = mentions,
+        mentions = net.mikesimone.backchannel.ForwardMentions.validFor(recipient, mentions),
         bodyRanges = bodyRanges,
         isSecure = true,
         scheduledDate = scheduledDate
@@ -369,7 +379,7 @@ class MediaSelectionRepository(context: Context) {
         expiresIn = if (isStory) 0 else TimeUnit.SECONDS.toMillis(recipient.expiresInSeconds.toLong()),
         isViewOnce = isViewOnce,
         storyType = storyType,
-        mentions = mentions,
+        mentions = net.mikesimone.backchannel.ForwardMentions.validFor(recipient, mentions),
         bodyRanges = bodyRanges,
         isSecure = true
       )
@@ -400,7 +410,7 @@ class MediaSelectionRepository(context: Context) {
               sentTimeMillis = if (recipient.isDistributionList) distributionListStoryClipsSentTimestamps.getOrPut(it.asKey()) { System.currentTimeMillis() } else System.currentTimeMillis(),
               isViewOnce = isViewOnce,
               storyType = storyType,
-              mentions = mentions,
+              mentions = net.mikesimone.backchannel.ForwardMentions.validFor(recipient, mentions),
               bodyRanges = bodyRanges,
               isSecure = true
             )

@@ -68,7 +68,21 @@ private final MultiShareArgs                      args;
                                          .withDraftText(draftText)
                                          .withLinkPreview(linkPreview);
 
-    MultiShareSender.send(builder.build(), resultsConsumer);
+    // BACKCHANNEL: a typed "@Name" becomes a mention in the chosen groups that person is in
+    org.signal.core.util.concurrent.SimpleTask.run(() -> {
+      java.util.List<org.thoughtcrime.securesms.recipients.RecipientId> ids = new java.util.ArrayList<>();
+      for (org.thoughtcrime.securesms.contacts.paged.ContactSearchKey key : args.getContactSearchKeys()) {
+        if (key instanceof org.thoughtcrime.securesms.contacts.paged.ContactSearchKey.RecipientSearchKey) {
+          ids.add(((org.thoughtcrime.securesms.contacts.paged.ContactSearchKey.RecipientSearchKey) key).getRecipientId());
+        }
+      }
+      if (draftText != null && !ids.isEmpty()) {
+        builder.withMentions(net.mikesimone.backchannel.ForwardMentions.mergeTyped(
+            args.getMentions(),
+            net.mikesimone.backchannel.ForwardMentions.find(org.thoughtcrime.securesms.dependencies.AppDependencies.getApplication(), draftText, ids)));
+      }
+      return MultiShareSender.sendSync(builder.build());
+    }, resultsConsumer::accept);
   }
 
   static class Factory implements ViewModelProvider.Factory {

@@ -6,6 +6,7 @@
 package org.thoughtcrime.securesms.conversation.mutiselect.forward
 
 import androidx.compose.runtime.annotation.RememberInComposition
+import org.signal.core.models.media.Media
 import org.thoughtcrime.securesms.color.ViewColorSet
 import org.thoughtcrime.securesms.recipients.Recipient
 
@@ -15,7 +16,9 @@ data class MultiselectForwardBottomBarState @RememberInComposition constructor(
   val sendButtonColors: ViewColorSet = ViewColorSet.PRIMARY,
   val isSendButtonEnabled: Boolean = true,
   val isSendButtonVisible: Boolean = false,
-  val isAddMessageVisible: Boolean = false
+  val isAddMessageVisible: Boolean = false,
+  // BACKCHANNEL: photos and videos being forwarded, when there are two or more, so some can be left out
+  val forwardMedia: List<Media> = emptyList()
 ) {
   sealed interface SelectedContact {
 

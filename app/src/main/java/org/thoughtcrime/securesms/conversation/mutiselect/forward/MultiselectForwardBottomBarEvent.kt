@@ -5,7 +5,12 @@
 
 package org.thoughtcrime.securesms.conversation.mutiselect.forward
 
+import org.signal.core.models.media.Media
+
 sealed interface MultiselectForwardBottomBarEvent {
   data class AddMessageUpdate(val message: String) : MultiselectForwardBottomBarEvent
   data object SendClick : MultiselectForwardBottomBarEvent
+
+  // BACKCHANNEL: leave one photo or video out of the forward
+  data class RemoveMedia(val media: Media) : MultiselectForwardBottomBarEvent
 }

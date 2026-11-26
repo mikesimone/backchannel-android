@@ -318,7 +318,8 @@ class MediaReviewFragment : Fragment(R.layout.v2_media_review_fragment), Schedul
           state.message,
           true,
           state.selectedMedia.size == 1 && !state.isStory && !MediaUtil.isDocumentType(state.focusedMedia?.contentType),
-          sharedViewModel.destination.getRecipientSearchKey()?.recipientId
+          sharedViewModel.destination.getRecipientSearchKey()?.recipientId,
+          sharedViewModel.destination.getRecipientSearchKeyList().filterNot { it.isStory }.map { it.recipientId }
         )
       }
     }
@@ -330,7 +331,8 @@ class MediaReviewFragment : Fragment(R.layout.v2_media_review_fragment), Schedul
           state.message,
           false,
           state.selectedMedia.size == 1 && !state.isStory && !MediaUtil.isDocumentType(state.focusedMedia?.contentType),
-          sharedViewModel.destination.getRecipientSearchKey()?.recipientId
+          sharedViewModel.destination.getRecipientSearchKey()?.recipientId,
+          sharedViewModel.destination.getRecipientSearchKeyList().filterNot { it.isStory }.map { it.recipientId }
         )
       }
     }

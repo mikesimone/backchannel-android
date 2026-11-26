@@ -32,6 +32,23 @@ final class MentionsPickerRepository {
     return groupDatabase.getGroupMemberIds(recipient.requireGroupId(), GroupTable.MemberSet.FULL_MEMBERS_EXCLUDING_SELF);
   }
 
+  // BACKCHANNEL: members of every active group among [recipientIds], for sharing to several chats
+  @WorkerThread
+  @NonNull List<RecipientId> getMembersOfAll(@Nullable List<RecipientId> recipientIds) {
+    if (recipientIds == null || recipientIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    java.util.LinkedHashSet<RecipientId> members = new java.util.LinkedHashSet<>();
+    for (RecipientId id : recipientIds) {
+      Recipient recipient = Recipient.resolved(id);
+      if (recipient.isPushV2Group() && recipient.isActiveGroup()) {
+        members.addAll(groupDatabase.getGroupMemberIds(recipient.requireGroupId(), GroupTable.MemberSet.FULL_MEMBERS_EXCLUDING_SELF));
+      }
+    }
+    return new java.util.ArrayList<>(members);
+  }
+
   @WorkerThread
   @NonNull List<Recipient> search(@NonNull MentionQuery mentionQuery) {
     if (mentionQuery.query == null || mentionQuery.members.isEmpty()) {

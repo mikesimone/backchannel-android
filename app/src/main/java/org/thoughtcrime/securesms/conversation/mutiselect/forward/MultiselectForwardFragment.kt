@@ -194,6 +194,9 @@ class MultiselectForwardFragment :
                 is MultiselectForwardBottomBarEvent.AddMessageUpdate -> {
                   viewModel.setMessage(it.message)
                 }
+                is MultiselectForwardBottomBarEvent.RemoveMedia -> {
+                  viewModel.removeMedia(it.media)
+                }
                 MultiselectForwardBottomBarEvent.SendClick -> {
                   imeController?.hide()
                   onSend()
@@ -399,7 +402,12 @@ class MultiselectForwardFragment :
     callback.exitFlow()
   }
 
-  private fun getMessageCount(): Int = args.multiShareArgs.size + if (viewModel.bottomBarState.value.message.isNotEmpty()) 1 else 0
+  private fun getMessageCount(): Int {
+    // BACKCHANNEL: typed words ride on a forwarded photo as its caption, so they're no extra message then
+    val sending = viewModel.argsToSend()
+    val separate = viewModel.bottomBarState.value.message.isNotEmpty() && net.mikesimone.backchannel.ForwardCaption.target(sending) < 0
+    return sending.size + if (separate) 1 else 0
+  }
 
   private fun handleMessageExpired() {
     Log.d(TAG, "handleMessageExpired")

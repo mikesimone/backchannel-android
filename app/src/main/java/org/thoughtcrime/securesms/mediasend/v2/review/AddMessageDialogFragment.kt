@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import org.signal.core.ui.view.Stub
 import org.signal.core.util.ByteLimitInputFilter
 import org.signal.core.util.EditTextUtil
+import org.signal.core.util.getParcelableArrayListCompat
 import org.signal.core.util.getParcelableCompat
 import org.signal.mediasend.HudCommand
 import org.thoughtcrime.securesms.R
@@ -235,6 +236,16 @@ class AddMessageDialogFragment : KeyboardEntryDialogFragment(R.layout.v2_media_a
       .observeOn(AndroidSchedulers.mainThread())
       .subscribe { r -> binding.content.addAMessageInput.replaceText(r) }
 
+    // BACKCHANNEL: sharing to several chats, @ offers the members of every chosen group
+    val recipientIds: List<RecipientId> = requireArguments().getParcelableArrayListCompat(ARG_DESTINATIONS, RecipientId::class.java) ?: emptyList()
+    if (requireArguments().getParcelableCompat(ARG_DESTINATION, RecipientId::class.java) == null && recipientIds.isNotEmpty()) {
+      mentionsViewModel.onRecipientsChange(recipientIds)
+      mentionsViewModel.selectedRecipient.observe(viewLifecycleOwner) { recipient ->
+        binding.content.addAMessageInput.replaceTextWithMention(recipient.getDisplayName(requireContext()), recipient.id)
+      }
+      return
+    }
+
     val recipientId: RecipientId = requireArguments().getParcelableCompat(ARG_DESTINATION, RecipientId::class.java) ?: return
 
     Recipient.live(recipientId).observe(viewLifecycleOwner) { recipient ->
@@ -325,6 +336,7 @@ class AddMessageDialogFragment : KeyboardEntryDialogFragment(R.layout.v2_media_a
     private const val ARG_INITIAL_EMOJI_TOGGLE = "arg.initial.emojiToggle"
     private const val ARG_VIEW_ONCE_AVAILABLE = "arg.viewOnceAvailable"
     private const val ARG_DESTINATION = "arg.destination"
+    private const val ARG_DESTINATIONS = "arg.destinations"
 
     const val REQUEST_KEY = "AddMessageViewModel__RequestKey"
     const val RESULT_INCREMENT_VIEW_ONCE_STATE = "AddMessageViewModel_IncrementViewOnceState"
@@ -334,9 +346,10 @@ class AddMessageDialogFragment : KeyboardEntryDialogFragment(R.layout.v2_media_a
       return show(fragmentManager, addAMessageDialog.message, addAMessageDialog.startWithEmojiKeyboard, addAMessageDialog.isViewOnceAvailable, destination)
     }
 
-    fun show(fragmentManager: FragmentManager, initialText: CharSequence?, startWithEmojiKeyboard: Boolean, isViewOnceAvailable: Boolean, destination: RecipientId?) {
+    fun show(fragmentManager: FragmentManager, initialText: CharSequence?, startWithEmojiKeyboard: Boolean, isViewOnceAvailable: Boolean, destination: RecipientId?, destinations: List<RecipientId> = emptyList()) {
       AddMessageDialogFragment().apply {
         arguments = Bundle().apply {
+          putParcelableArrayList(ARG_DESTINATIONS, ArrayList(destinations))
           putCharSequence(ARG_INITIAL_TEXT, initialText)
           putBoolean(ARG_INITIAL_EMOJI_TOGGLE, startWithEmojiKeyboard)
           putBoolean(ARG_VIEW_ONCE_AVAILABLE, isViewOnceAvailable)

@@ -66,10 +66,26 @@ object MultiselectForwardRepository {
         .filter { it is ContactSearchKey.RecipientSearchKey }
         .toSet()
 
-      val mappedArgs: List<MultiShareArgs> = multiShareArgs.map { it.buildUpon(filteredContacts).build() }
-      val results = mappedArgs.sortedBy { it.timestamp }.map { MultiShareSender.sendSync(it) }
+      val mappedArgs: MutableList<MultiShareArgs> = multiShareArgs.map { it.buildUpon(filteredContacts).build() }.sortedBy { it.timestamp }.toMutableList()
 
+      // BACKCHANNEL: typed words go on the forwarded photo or video as its caption, not as a separate message
+      var separateMessage = additionalMessage
       if (additionalMessage.isNotEmpty()) {
+        val captionIndex = net.mikesimone.backchannel.ForwardCaption.target(mappedArgs)
+        if (captionIndex >= 0) {
+          val wordMentions = net.mikesimone.backchannel.ForwardMentions.find(
+            AppDependencies.application,
+            additionalMessage,
+            filteredContacts.map { (it as ContactSearchKey.RecipientSearchKey).recipientId }
+          )
+          mappedArgs[captionIndex] = net.mikesimone.backchannel.ForwardCaption.withWords(mappedArgs[captionIndex], additionalMessage, wordMentions)
+          separateMessage = ""
+        }
+      }
+
+      val results = mappedArgs.map { MultiShareSender.sendSync(it) }
+
+      if (separateMessage.isNotEmpty()) {
         val additionalContacts = filteredContacts.filterNot { it is ContactSearchKey.RecipientSearchKey && it.isStory }.toSet()
         val additional = MultiShareArgs.Builder(additionalContacts)
           .withDraftText(additionalMessage)

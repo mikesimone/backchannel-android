@@ -5,7 +5,19 @@
 
 package org.thoughtcrime.securesms.conversation.mutiselect.forward
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.clip
+import org.signal.core.models.media.Media
+import org.signal.glide.compose.GlideImage
+import org.signal.glide.compose.GlideImageScaleType
+import org.signal.glide.decryptableuri.DecryptableUri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -69,6 +81,10 @@ fun MultiselectForwardBottomBar(
       Column(
         modifier = Modifier.weight(1f)
       ) {
+        if (state.forwardMedia.isNotEmpty()) {
+          ForwardMediaStrip(state = state, events = events)
+        }
+
         Row(
           verticalAlignment = Alignment.CenterVertically
         ) {
@@ -112,6 +128,49 @@ fun MultiselectForwardBottomBar(
                 events = events
               )
             }
+          }
+        }
+      }
+    }
+  }
+}
+
+// BACKCHANNEL: the photos and videos being forwarded, each with an X to leave it out (at least one stays)
+@Composable
+private fun ForwardMediaStrip(
+  state: MultiselectForwardBottomBarState,
+  events: (MultiselectForwardBottomBarEvent) -> Unit
+) {
+  LazyRow(
+    horizontalArrangement = spacedBy(8.dp),
+    contentPadding = PaddingValues(horizontal = dimensionResource(org.signal.core.ui.R.dimen.gutter)),
+    modifier = Modifier.padding(bottom = 8.dp)
+  ) {
+    items(items = state.forwardMedia, key = { it.uri.toString() }) { media: Media ->
+      Box(modifier = Modifier.size(60.dp)) {
+        GlideImage(
+          model = DecryptableUri(media.uri),
+          scaleType = GlideImageScaleType.CENTER_CROP,
+          modifier = Modifier
+            .size(60.dp)
+            .clip(RoundedCornerShape(8.dp))
+        )
+        if (state.forwardMedia.size > 1) {
+          Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+              .align(Alignment.TopEnd)
+              .padding(3.dp)
+              .size(22.dp)
+              .clip(CircleShape)
+              .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+              .clickable { events(MultiselectForwardBottomBarEvent.RemoveMedia(media)) }
+          ) {
+            Icon(
+              imageVector = ImageVector.vectorResource(R.drawable.symbol_x_compact_bold_16),
+              contentDescription = stringResource(R.string.ForwardMedia__remove),
+              modifier = Modifier.size(14.dp)
+            )
           }
         }
       }

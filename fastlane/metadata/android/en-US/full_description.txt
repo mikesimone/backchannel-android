@@ -8,7 +8,7 @@ WHAT BACKCHANNEL ADDS
 Conversations
 • Reply privately: answer someone's group message in a 1:1 chat, with their message and group quoted.
 • Reply to one photo of a multi-photo message, with your own photos, videos, GIFs (or search for one), files or a sticker.
-• Forward to as many chats as you like (pinned and recent chats first), with your own message on top and real @mentions in groups.
+• Forward or share to many chats (pinned and recent first), with @mentions in groups, your words as the photo's caption, and any photos left out.
 • Send one poll to many chats at once.
 • Sticker replies, favorite stickers, hide sticker packs people send you, and double-tap a message to react.
 • Starred messages, never auto-deleted until you unstar them.

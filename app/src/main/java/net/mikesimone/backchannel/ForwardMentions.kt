@@ -63,4 +63,25 @@ object ForwardMentions {
     }
     return mentions
   }
+
+  /** Adds [found] mentions that don't overlap one already in [existing] (picked from the list). */
+  @JvmStatic
+  fun mergeTyped(existing: List<Mention>, found: List<Mention>): List<Mention> {
+    if (found.isEmpty()) return existing
+    val extra = found.filter { f ->
+      existing.none { e -> f.start < e.start + e.length && e.start < f.start + f.length }
+    }
+    return (existing + extra).sortedBy { it.start }
+  }
+
+  /**
+   * The mentions [recipient] should get: only in an active group, and only for its members.
+   * Sharing to several chats sends one set of mentions to all of them (Mike 2026-11-26).
+   */
+  @JvmStatic
+  fun validFor(recipient: Recipient, mentions: List<Mention>): List<Mention> {
+    if (mentions.isEmpty() || !recipient.isPushV2Group || !recipient.isActiveGroup) return emptyList()
+    val members = recipient.participantIds.toSet()
+    return mentions.filter { it.recipientId in members }
+  }
 }
